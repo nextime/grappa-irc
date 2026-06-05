@@ -165,8 +165,8 @@ defmodule Grappa.Deploy.PreflightTest do
       assert {:hot, []} = Preflight.classify_paths(["lib/grappa/scrollback.ex"])
     end
 
-    test "cicchetto/src/lib/foo.ts → hot (cic-only is hot)" do
-      assert {:hot, []} = Preflight.classify_paths(["cicchetto/src/lib/foo.ts"])
+    test "frontends/cicchetto/src/lib/foo.ts → hot (cic-only is hot)" do
+      assert {:hot, []} = Preflight.classify_paths(["frontends/cicchetto/src/lib/foo.ts"])
     end
 
     test "docs/foo.md → hot" do

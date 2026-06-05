@@ -70,7 +70,7 @@ jobs:
     timeout-minutes: 25
     # `packages: read` so `docker login ghcr.io` can pull the
     # prebuilt bahamut + services images from `ghcr.io/vjt/*` (see
-    # cicchetto/e2e/compose.ghcr-vjt.yaml). Default GITHUB_TOKEN has
+    # frontends/cicchetto/e2e/compose.ghcr-vjt.yaml). Default GITHUB_TOKEN has
     # this scope on the same-owner package, but only when permissions
     # are declared at the job level.
     permissions:
@@ -80,7 +80,7 @@ jobs:
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
-          # azzurra-testnet (cicchetto/e2e/infra) is a public submodule —
+          # azzurra-testnet (frontends/cicchetto/e2e/infra) is a public submodule —
           # `recursive` initializes it via the default GITHUB_TOKEN
           # (public-repo HTTPS, no deploy key needed). Without this the
           # script bails at the submodule-empty check.
@@ -88,14 +88,14 @@ jobs:
 
       - name: Verify submodule populated
         run: |
-          test -d cicchetto/e2e/infra/bahamut || {
+          test -d frontends/cicchetto/e2e/infra/bahamut || {
             echo "azzurra-testnet submodule looks empty";
             exit 1;
           }
 
       - name: Upgrade docker compose plugin
         # Runner-shipped docker compose is too old to grok the
-        # cicchetto/e2e/compose.yaml `include:` + per-service override
+        # frontends/cicchetto/e2e/compose.yaml `include:` + per-service override
         # pattern (`services.leaf-v6 conflicts with imported resource`).
         # Newer compose merges per-service overrides into the included
         # file's service definition; older compose treats them as a
@@ -113,7 +113,7 @@ jobs:
       - name: Log in to GHCR
         # The bahamut + services images live at
         # `ghcr.io/vjt/{bahamut,services}` — published by the
-        # `images.yml` workflow in the cicchetto/e2e/infra submodule
+        # `images.yml` workflow in the frontends/cicchetto/e2e/infra submodule
         # repo (vjt/azzurra-testnet). `secrets.GITHUB_TOKEN` is the
         # ephemeral per-run token; it has `packages: read` scope (see
         # job-level permissions above) and can pull same-owner

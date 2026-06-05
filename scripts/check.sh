@@ -38,7 +38,7 @@
 cd "$REPO_ROOT"
 
 "$SRC_ROOT/scripts/mix.sh" --env=dev ci.check
-# Drift gate for cicchetto/src/lib/wireTypes.ts — regenerates the file
+# Drift gate for frontends/cicchetto/src/lib/wireTypes.ts — regenerates the file
 # in memory and diffs against the committed copy. Fails with a clear
 # error message pointing the operator at `scripts/mix.sh
 # grappa.gen_wire_types` when a Wire typespec was edited without

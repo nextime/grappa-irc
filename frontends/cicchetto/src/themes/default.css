@@ -24,7 +24,7 @@
  *                             bucket BC2). Hues chosen per theme for
  *                             readable contrast against --bg. djb2
  *                             hash → palette index lives in
- *                             cicchetto/src/lib/nickColor.ts.
+ *                             frontends/cicchetto/src/lib/nickColor.ts.
  *   --font-mono             : font stack
  *   --font-size, --line-height
  *   --breakpoint-mobile     : 768px (mirrored in JS via theme.ts isMobile)

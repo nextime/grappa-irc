@@ -384,7 +384,7 @@ defmodule Grappa.Scrollback do
   round-trips per (slug, channel) cursor at login time.
 
   Content kinds (`:privmsg | :notice | :action`) match the cic
-  `isContentKind` predicate (`cicchetto/src/lib/api.ts`); every other
+  `isContentKind` predicate (`frontends/cicchetto/src/lib/api.ts`); every other
   kind (`:join | :part | :quit | :nick_change | :mode | :topic |
   :kick | :server_event`) counts under `:events`. The split is the
   same one the cic derived memos use (`selection.ts`'s

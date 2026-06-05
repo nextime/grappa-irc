@@ -27,10 +27,10 @@ import { type Accessor, createSignal } from "solid-js";
 // "manual hard-refresh after `cicchetto-build`", this signal automates
 // it.
 
-// IMPORTANT: keep in lockstep with `cicchetto/e2e/fixtures/bundleSwap.ts`
+// IMPORTANT: keep in lockstep with `frontends/cicchetto/e2e/fixtures/bundleSwap.ts`
 // `BUNDLE_HASH_RE`. The e2e fixture inlines the same regex because
 // cross-project import fails under Playwright's ESM resolution (the
-// e2e tsconfig doesn't include cicchetto/src). Update BOTH if Vite
+// e2e tsconfig doesn't include frontends/cicchetto/src). Update BOTH if Vite
 // ever changes asset-hash format.
 const BUNDLE_HASH_RE = /\/assets\/index-([^."]+)\.js/;
 

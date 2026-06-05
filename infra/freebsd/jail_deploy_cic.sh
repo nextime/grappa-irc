@@ -17,8 +17,8 @@
 #      mismatch.
 #
 # What it does NOT do: touch the BEAM. No mix compile, no mix release,
-# no service restart. Use for cic-only changes (cicchetto/src/,
-# cicchetto/index.html, vite.config.ts manifest tweaks) where rebooting
+# no service restart. Use for cic-only changes (frontends/cicchetto/src/,
+# frontends/cicchetto/index.html, vite.config.ts manifest tweaks) where rebooting
 # the bouncer is unacceptable. Server-side changes still go through
 # deploy.sh (which auto-classifies hot vs cold).
 #

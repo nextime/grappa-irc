@@ -2,7 +2,7 @@
 # scripts/testnet.sh — bring up / tear down / probe the integration
 # testnet stack on its own (without running the Playwright suite).
 #
-# Wraps `cicchetto/e2e/compose.yaml` for iterative debugging — the
+# Wraps `frontends/cicchetto/e2e/compose.yaml` for iterative debugging — the
 # integration.sh wrapper always tears the stack down on exit, which
 # makes it useless when you want to inspect S2S linkup, conf rendering,
 # or peer behavior interactively.
@@ -25,7 +25,7 @@ set -euo pipefail
 
 . "$(dirname "$0")/_lib.sh"
 
-E2E_DIR="$SRC_ROOT/cicchetto/e2e"
+E2E_DIR="$SRC_ROOT/frontends/cicchetto/e2e"
 
 if [ ! -f "$E2E_DIR/compose.yaml" ]; then
     die "missing $E2E_DIR/compose.yaml"

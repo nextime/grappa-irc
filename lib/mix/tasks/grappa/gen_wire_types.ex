@@ -1,10 +1,10 @@
 defmodule Mix.Tasks.Grappa.GenWireTypes do
-  @shortdoc "Generate cicchetto/src/lib/wireTypes.ts from Grappa.*.Wire typespecs"
+  @shortdoc "Generate frontends/cicchetto/src/lib/wireTypes.ts from Grappa.*.Wire typespecs"
 
   @moduledoc """
   Walks every module under `lib/grappa/**/wire.ex`, parses `@type`
   declarations via Code.Typespec.fetch_types/1, emits a single
-  deterministic TypeScript file at `cicchetto/src/lib/wireTypes.ts`.
+  deterministic TypeScript file at `frontends/cicchetto/src/lib/wireTypes.ts`.
 
   ## Usage
 
@@ -44,7 +44,7 @@ defmodule Mix.Tasks.Grappa.GenWireTypes do
 
   use Mix.Task
 
-  @output_path "cicchetto/src/lib/wireTypes.ts"
+  @output_path "frontends/cicchetto/src/lib/wireTypes.ts"
   @wire_glob "lib/grappa/**/wire.ex"
 
   @impl Mix.Task

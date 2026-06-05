@@ -23,7 +23,7 @@ import { nickEquals } from "./nickEquals";
 // 10, irssi 12; 16 was picked here to interpolate enough hues for
 // dense channels without overflowing the readability budget.
 //
-// The actual hue colors live in `cicchetto/src/themes/default.css`
+// The actual hue colors live in `frontends/cicchetto/src/themes/default.css`
 // as `--nick-color-0` through `--nick-color-15` under each
 // `:root[data-theme="..."]` block. Theme-aware by construction: the
 // helper produces a `var(--nick-color-N)` string; the theme owns the

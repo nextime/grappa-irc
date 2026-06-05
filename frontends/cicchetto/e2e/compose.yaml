@@ -1,4 +1,4 @@
-# grappa — integration testing stack (cicchetto/e2e)
+# grappa — integration testing stack (frontends/cicchetto/e2e)
 #
 # A self-contained docker compose that boots:
 #   - the azzurra-testnet (hub + leaf-v4 + leaf-v6 + services), via the
@@ -94,7 +94,7 @@ services:
   # constants the runner reads back.
   grappa-e2e-seeder:
     build:
-      context: ../..
+      context: ../../..
       args:
         CONTAINER_UID: ${CONTAINER_UID:-1000}
         CONTAINER_GID: ${CONTAINER_GID:-1000}
@@ -104,8 +104,8 @@ services:
     user: "${CONTAINER_UID:-1000}:${CONTAINER_GID:-1000}"
     working_dir: /app
     volumes:
-      - ../..:/app
-      - ../../runtime/e2e/grappa-runtime:/app/runtime
+      - ../../..:/app
+      - ../../../runtime/e2e/grappa-runtime:/app/runtime
     environment:
       MIX_ENV: dev
       ELIXIR_ERL_OPTIONS: "+fnu"
@@ -115,7 +115,7 @@ services:
       - "-c"
       - |
         set -e
-        # Bind-mount `../..:/app` shadows the image-baked `.mix/`, `.hex/`,
+        # Bind-mount `../../..:/app` shadows the image-baked `.mix/`, `.hex/`,
         # `deps/`, `_build/`. CP23 S1 lessons (memories
         # `feedback_named_volume_uid_trap` + `feedback_bind_mount_shadows_image`):
         # named volumes for these dirs init root-owned and trip the dropped UID;
@@ -195,7 +195,7 @@ services:
 
   grappa-test:
     build:
-      context: ../..
+      context: ../../..
       args:
         CONTAINER_UID: ${CONTAINER_UID:-1000}
         CONTAINER_GID: ${CONTAINER_GID:-1000}
@@ -218,7 +218,7 @@ services:
       # grappa-test ...`) so this dep is enforced by the wrapper, not
       # compose semantics.
     volumes:
-      # Bind-mount source from the worktree root (../..). Same shape as
+      # Bind-mount source from the worktree root (../../..). Same shape as
       # compose.yaml — live source, not a release. Named volumes for
       # _build / deps / .mix / .hex were dropped post-CP23 S1: the
       # single-stage `mix phx.server` model never runs as root, and
@@ -226,7 +226,7 @@ services:
       # `feedback_named_volume_uid_trap`), tripping the dropped UID's
       # writes to deps/_build. Bind-mount inherits operator UID, no
       # collision.
-      - ../..:/app
+      - ../../..:/app
       # Per-stack runtime (sqlite). Host bind-mount under
       # runtime/e2e/grappa-runtime so the directory ownership matches
       # the operator's UID — same gotcha as bun-cache + cicchetto-dist
@@ -235,7 +235,7 @@ services:
       # to fail with `database_open_failed`. Bind-mount inherits the
       # host UID via Docker Desktop's translation on macOS / direct
       # uid-match on Linux.
-      - ../../runtime/e2e/grappa-runtime:/app/runtime
+      - ../../../runtime/e2e/grappa-runtime:/app/runtime
     environment:
       MIX_ENV: dev
       ELIXIR_ERL_OPTIONS: "+fnu"
@@ -270,16 +270,16 @@ services:
     user: "${CONTAINER_UID:-1000}:${CONTAINER_GID:-1000}"
     working_dir: /app
     volumes:
-      - ../../cicchetto:/app
+      - ..:/app
       # Host bind-mount for the bun install cache, shared with the
       # dev `scripts/bun.sh` cache at runtime/bun-cache. Named volume
       # would be root-owned on first create → AccessDenied under the
       # dropped UID; bind-mount inherits the operator's ownership.
-      - ../../runtime/bun-cache:/cache
+      - ../../../runtime/bun-cache:/cache
       # Host bind-mount for the dist output too — same reason. Lives
       # under runtime/e2e/cicchetto-dist (separate from the prod
       # deploy's runtime/cicchetto-dist so they can't collide).
-      - ../../runtime/e2e/cicchetto-dist:/app/dist
+      - ../../../runtime/e2e/cicchetto-dist:/app/dist
     tmpfs:
       - /tmp:exec,uid=${CONTAINER_UID:-1000},gid=${CONTAINER_GID:-1000}
     environment:
@@ -315,9 +315,9 @@ services:
         condition: service_completed_successfully
     volumes:
       - ./nginx-test.conf:/etc/nginx/nginx.conf:ro
-      - ../../infra/snippets:/etc/nginx/snippets:ro
+      - ../../../infra/snippets:/etc/nginx/snippets:ro
       - ./nginx-certs:/etc/nginx/certs:ro
-      - ../../runtime/e2e/cicchetto-dist:/usr/share/nginx/html:ro
+      - ../../../runtime/e2e/cicchetto-dist:/usr/share/nginx/html:ro
     networks:
       grappa-e2e:
         aliases: [nginx-test]
@@ -356,7 +356,7 @@ services:
       - e2e_runner_node_modules:/work/node_modules
       # Persist Playwright HTML reports + traces to host for post-
       # mortem (test-results/ + playwright-report/ — gitignored at
-      # cicchetto/e2e/.gitignore).
+      # frontends/cicchetto/e2e/.gitignore).
       - ./test-results:/work/test-results
       - ./playwright-report:/work/playwright-report
       # UX-6-I.2 (2026-05-22) — real-bundle-swap fixture mounts the
@@ -364,8 +364,8 @@ services:
       # drop a synthetic bundle B asset mid-spec. nginx-test mounts
       # the same host path RO (line ~301); the host file is the single
       # source of truth, both containers see the same bytes. See
-      # cicchetto/e2e/fixtures/bundleSwap.ts.
-      - ../../runtime/e2e/cicchetto-dist:/work/dist-test
+      # frontends/cicchetto/e2e/fixtures/bundleSwap.ts.
+      - ../../../runtime/e2e/cicchetto-dist:/work/dist-test
     working_dir: /work
     environment:
       CI: "1"

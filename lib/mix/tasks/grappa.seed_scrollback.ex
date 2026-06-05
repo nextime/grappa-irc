@@ -26,7 +26,7 @@ defmodule Mix.Tasks.Grappa.SeedScrollback do
   determinable timeline a test can place a read cursor inside.
 
   e2e-only: this task takes no production input. Wired through the
-  `grappa-e2e-seeder` sidecar in `cicchetto/e2e/compose.yaml` AFTER
+  `grappa-e2e-seeder` sidecar in `frontends/cicchetto/e2e/compose.yaml` AFTER
   the user + network bind has run.
   """
   use Boundary,

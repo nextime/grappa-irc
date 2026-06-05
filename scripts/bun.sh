@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run a bun command inside an oven/bun:1 container against cicchetto/.
+# Run a bun command inside an oven/bun:1 container against frontends/cicchetto/.
 #
 # Usage:
 #   scripts/bun.sh install
@@ -10,18 +10,18 @@
 #
 # Canonical "which test runner do I use?" docs: docs/TESTING.md.
 #
-# cicchetto/ (the SolidJS PWA) is the working directory inside the
+# frontends/cicchetto/ (the SolidJS PWA) is the working directory inside the
 # container at /app. The grappa Elixir container is unaffected — bun
 # is dev-only (typecheck, lint, vitest, vite preview, vite build into
-# `cicchetto/dist/` for local inspection). Production deploys do NOT
-# consume `cicchetto/dist/`; `scripts/deploy.sh` invokes the compose
+# `frontends/cicchetto/dist/` for local inspection). Production deploys do NOT
+# consume `frontends/cicchetto/dist/`; `scripts/deploy.sh` invokes the compose
 # `cicchetto-build` oneshot which writes to the bind-mounted
 # `runtime/cicchetto-dist/` (the path nginx serves). So `bun.sh run
 # build` is for local preview / debugging, not "preview prod" — for a
 # build that matches what nginx will serve, run `scripts/deploy.sh`
 # (or the standalone `docker compose run cicchetto-build`).
 #
-# Worktree-aware: cicchetto/ is bind-mounted from SRC_ROOT, so each
+# Worktree-aware: frontends/cicchetto/ is bind-mounted from SRC_ROOT, so each
 # worktree builds from its own source. The bun install cache is a host
 # bind-mount at REPO_ROOT/runtime/bun-cache — shared across all
 # worktrees (REPO_ROOT is always main, regardless of caller worktree),
@@ -35,7 +35,7 @@
 
 . "$(dirname "$0")/_lib.sh"
 
-CICCHETTO_DIR="$SRC_ROOT/cicchetto"
+CICCHETTO_DIR="$SRC_ROOT/frontends/cicchetto"
 BUN_CACHE_DIR="$REPO_ROOT/runtime/bun-cache"
 mkdir -p "$CICCHETTO_DIR" "$BUN_CACHE_DIR"
 

@@ -363,7 +363,7 @@ Private messages get per-user "query" windows in the sidebar, persisted across l
 - **`/query <nick>`** / **`/q <nick>`** — opens the window and switches focus, no message sent.
 - **Incoming PRIVMSG from a sender with no existing query window** — auto-opens the window in the sidebar **but does NOT switch focus** (the unread badge bumps; the user clicks to switch).
 
-**Cluster-wide focus rule:** focus changes only on user actions (`/join` self, `/msg` `/query` `/q`, click on tab, click on nick). Incoming traffic — PRIVMSG, JOIN, PART, QUIT, MODE, autojoin window auto-creation — never steals focus. Enforced by invariant tests in `cicchetto/src/__tests__/focus-rule.test.ts`.
+**Cluster-wide focus rule:** focus changes only on user actions (`/join` self, `/msg` `/query` `/q`, click on tab, click on nick). Incoming traffic — PRIVMSG, JOIN, PART, QUIT, MODE, autojoin window auto-creation — never steals focus. Enforced by invariant tests in `frontends/cicchetto/src/__tests__/focus-rule.test.ts`.
 
 ### Archive section (CP15 B4)
 
@@ -371,13 +371,13 @@ Each network section in the sidebar gets a collapsed `<details>` "Archive" benea
 
 ### Window state model (CP15 B5)
 
-`cicchetto/src/lib/windowState.ts` mirrors the server-side window-state machine (`Grappa.Session.Server`'s `window_states` + `window_failure_{reasons,numerics}` + `window_kicked_meta` maps). Three module-singleton signal stores keyed on `(networkSlug, channelName)`:
+`frontends/cicchetto/src/lib/windowState.ts` mirrors the server-side window-state machine (`Grappa.Session.Server`'s `window_states` + `window_failure_{reasons,numerics}` + `window_kicked_meta` maps). Three module-singleton signal stores keyed on `(networkSlug, channelName)`:
 
 - `windowStateByChannel`: `"pending" | "joined" | "failed" | "kicked" | "parked"` — absence = archived.
 - `windowFailureByChannel`: `{reason, numeric}` for `:failed` (471/473/474/475/403/405).
 - `windowKickedMetaByChannel`: `{by, reason}` for `:kicked`.
 
-The server emits typed events on the per-channel topic — `kind: "joined" | "join_failed" | "kicked"` — that `cicchetto/src/lib/subscribe.ts` dispatches to the matching setter. `:parted` is intentionally NOT broadcast: its projection is "key removed from windowStateByChannel" (cic derives it from the existing `:part` presence message when `sender === ownNick`).
+The server emits typed events on the per-channel topic — `kind: "joined" | "join_failed" | "kicked"` — that `frontends/cicchetto/src/lib/subscribe.ts` dispatches to the matching setter. `:parted` is intentionally NOT broadcast: its projection is "key removed from windowStateByChannel" (cic derives it from the existing `:part` presence message when `sender === ownNick`).
 
 Render branches:
 
@@ -387,7 +387,7 @@ Render branches:
 
 `/join` from compose calls `setPending(channelKey)` immediately for visual feedback. The pending entry also pre-subscribes the per-channel Phoenix topic (one createEffect iterates `windowStateByChannel()` for `"pending"` entries) so the upstream JOIN echo broadcast lands on a live subscriber — closing the race where Phoenix PubSub would drop broadcasts to a topic cic hadn't yet joined.
 
-The full window-state transition matrix is e2e-covered as of CP15 B6: `cicchetto/e2e/tests/cp15-b6-*.spec.ts` exercises `pending → joined`, `pending → failed` (invite-only), `joined → kicked`, `joined → parted → archive → re-joined`, and the archived-query revival cycle against the real Bahamut testnet via `scripts/integration.sh`.
+The full window-state transition matrix is e2e-covered as of CP15 B6: `frontends/cicchetto/e2e/tests/cp15-b6-*.spec.ts` exercises `pending → joined`, `pending → failed` (invite-only), `joined → kicked`, `joined → parted → archive → re-joined`, and the archived-query revival cycle against the real Bahamut testnet via `scripts/integration.sh`.
 
 ### Mobile layout (C6)
 
@@ -398,7 +398,7 @@ At viewports ≤768px (`--breakpoint-mobile`) cicchetto switches to a mobile-fir
 - **Full-width scrollback** — no left/right panes; compose and bottom-bar sit below it.
 - Desktop three-pane layout (sidebar | scrollback | members) is completely unchanged above 768px.
 
-The breakpoint is mirrored in TypeScript as the `isMobile()` reactive signal in `cicchetto/src/lib/theme.ts`.
+The breakpoint is mirrored in TypeScript as the `isMobile()` reactive signal in `frontends/cicchetto/src/lib/theme.ts`.
 
 ### Scrollback polish (C7)
 
@@ -468,7 +468,7 @@ Transient errors (timeout, refused, DNS, max-backoff) keep the session in contin
 
 ### Image upload (I cluster, 2026-05-15)
 
-Cicchetto can upload images to a third-party host and post the resulting URL as a regular IRC PRIVMSG. The wire stays text-only — the server, the IRC protocol, and any IRCv3 listener client all see a normal message; only cic renders the link as clickable. Pluggable `ImageHost` interface (`cicchetto/src/lib/image-upload.ts`) ships with a litterbox.catbox.moe implementation and is shaped to fit imgur / 0x0.st / catbox-permanent next. Default TTL is 24h (litterbox's `1h | 12h | 24h | 72h` knob, server-side expiry — no cic deletion). Four trigger surfaces: 📸 button in the compose box, mobile camera capture (`<input type=file accept=image/* capture=environment>` on ≤768px), drag-drop onto the compose area, and clipboard paste. Wire shape is `📸 https://litter.catbox.moe/abc.png` — single emoji prefix, no IRC tags, no client-side detection magic. First-upload-per-host shows a privacy-acknowledgement modal (per-host localStorage key); subsequent uploads are silent. Render contract: clickable links via the existing `linkify` path, no inline thumbnails, no lightbox — IRC stays text only (see CLAUDE.md Engineering Standards → Code-shape rules).
+Cicchetto can upload images to a third-party host and post the resulting URL as a regular IRC PRIVMSG. The wire stays text-only — the server, the IRC protocol, and any IRCv3 listener client all see a normal message; only cic renders the link as clickable. Pluggable `ImageHost` interface (`frontends/cicchetto/src/lib/image-upload.ts`) ships with a litterbox.catbox.moe implementation and is shaped to fit imgur / 0x0.st / catbox-permanent next. Default TTL is 24h (litterbox's `1h | 12h | 24h | 72h` knob, server-side expiry — no cic deletion). Four trigger surfaces: 📸 button in the compose box, mobile camera capture (`<input type=file accept=image/* capture=environment>` on ≤768px), drag-drop onto the compose area, and clipboard paste. Wire shape is `📸 https://litter.catbox.moe/abc.png` — single emoji prefix, no IRC tags, no client-side detection magic. First-upload-per-host shows a privacy-acknowledgement modal (per-host localStorage key); subsequent uploads are silent. Render contract: clickable links via the existing `linkify` path, no inline thumbnails, no lightbox — IRC stays text only (see CLAUDE.md Engineering Standards → Code-shape rules).
 
 ## Scope
 

@@ -14,7 +14,7 @@ defmodule Grappa.AdminEvents.Wire do
 
   Cic-side enforces the same exhaustiveness via the `WireAdminEvent`
   discriminated union + `assertNever` in
-  `cicchetto/src/lib/adminEvents.ts`. Per `feedback_no_silent_drops_closed`
+  `frontends/cicchetto/src/lib/adminEvents.ts`. Per `feedback_no_silent_drops_closed`
   every union arm walks both sides.
 
   ## No localized strings on the wire
@@ -22,7 +22,7 @@ defmodule Grappa.AdminEvents.Wire do
   Per CLAUDE.md "Don't bake human-readable strings into bodies/wire"
   the server emits structured fields only (ids, atoms-as-strings,
   ISO-8601 timestamps, typed enums). Human-readable rendering for the
-  Events tab lives in `cicchetto/src/AdminEventsTab.tsx` `renderEvent`.
+  Events tab lives in `frontends/cicchetto/src/AdminEventsTab.tsx` `renderEvent`.
 
   ## Actor attribution
 

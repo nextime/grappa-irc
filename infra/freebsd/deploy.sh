@@ -171,11 +171,11 @@ fi
 
 # cic bundle — vite build via npm. Required after a fresh `git clone`
 # (runtime/cicchetto-dist/ is gitkeep-only) and on every deploy that
-# touched cicchetto/src/. The nginx symlink /usr/local/www/cic →
+# touched frontends/cicchetto/src/. The nginx symlink /usr/local/www/cic →
 # runtime/cicchetto-dist/ is set up once by jail_install_nginx.sh;
 # an empty dist here makes nginx loop on `try_files $uri /index.html`
 # (the "rewrite or internal redirection cycle" 500). Belt-and-braces:
-# even when nothing in cicchetto/src/ changed, `npm run build` is fast
+# even when nothing in frontends/cicchetto/src/ changed, `npm run build` is fast
 # (~40ms incremental). HOT path skips this — module reload doesn't need
 # new cic; cic deploys are orthogonal (see jail_deploy_cic.sh).
 #

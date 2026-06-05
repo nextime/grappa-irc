@@ -126,7 +126,7 @@ scripts/format.sh            # mix format
 scripts/format.sh --check    # mix format --check-formatted (CI mode)
 scripts/check.sh             # full mix ci.check (every gate)
 scripts/bats.sh              # bats suite for bin/grappa
-scripts/bun.sh <cmd>         # bun in oven/bun:1 oneshot against cicchetto/ (install / add / run test / run check / run build)
+scripts/bun.sh <cmd>         # bun in oven/bun:1 oneshot against frontends/cicchetto/ (install / add / run test / run check / run build)
 scripts/testnet.sh up|down|status|logs|probe|shell  # e2e testnet stack standalone (no Playwright)
 scripts/integration.sh       # full e2e suite (testnet + grappa + nginx + Playwright)
 scripts/db.sh                # sqlite3 RO against runtime/grappa_dev.db
@@ -189,7 +189,7 @@ substrate's job:
   and "new .beam on disk where the live BEAM looks."
 
 **HOT** (default when preflight returns HOT — sessions preserved,
-daemon pid unchanged): `lib/*.ex` edits, `cicchetto/src/` edits
+daemon pid unchanged): `lib/*.ex` edits, `frontends/cicchetto/src/` edits
 (cic bundle deploy is its own path), most config tweaks.
 
 **COLD** (forced by `--force-cold` or any of these diff classes

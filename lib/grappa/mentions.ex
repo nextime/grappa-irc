@@ -54,7 +54,7 @@ defmodule Grappa.Mentions do
   two consumers — same predicate guarantees the badge cic raises in
   the sidebar and the OS push that fires server-side never disagree.
 
-  Mirror of `cicchetto/src/lib/mentionMatch.ts`'s `mentionsUser/2`. A
+  Mirror of `frontends/cicchetto/src/lib/mentionMatch.ts`'s `mentionsUser/2`. A
   regex tweak (e.g. broader Unicode word-boundary support) MUST land
   in both ports together.
   """

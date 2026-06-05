@@ -353,7 +353,7 @@ not the surrounding code.**
   pipeline (which gates `/admin/reload` + `/admin/cic-bundle-changed`
   on `Plugs.LoopbackOnly`); same URL prefix, separate scopes. The
   nginx allowlist (`infra/nginx.conf` + e2e
-  `cicchetto/e2e/nginx-test.conf`) must list the new resource — both
+  `frontends/cicchetto/e2e/nginx-test.conf`) must list the new resource — both
   the `:80` and `:443` server blocks — or the route 404s at the proxy
   before reaching Phoenix.
 

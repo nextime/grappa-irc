@@ -22,7 +22,7 @@
 # Usage:
 #   scripts/deploy-cic.sh
 #
-# Operator workflow: edit cicchetto/src/, then `scripts/deploy-cic.sh`.
+# Operator workflow: edit frontends/cicchetto/src/, then `scripts/deploy-cic.sh`.
 # Browsers with the old bundle see the refresh banner within seconds.
 
 set -euo pipefail

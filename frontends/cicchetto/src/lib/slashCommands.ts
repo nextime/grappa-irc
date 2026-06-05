@@ -386,7 +386,7 @@ const DISPATCH: Readonly<Record<string, Handler>> = {
   // command targeting the canonical ServiceNick. Empty body → error (no
   // point sending an empty PRIVMSG to ChanServ et al). Server responses
   // route to the `$server` window via the services-sender allowlist
-  // (lib/grappa/irc/identifier.ex + cicchetto/src/lib/servicesSender.ts —
+  // (lib/grappa/irc/identifier.ex + frontends/cicchetto/src/lib/servicesSender.ts —
   // kept in lockstep). The compose.ts `msg` arm already short-circuits
   // services targets to `sendPrivmsg` without opening a query window.
   cs: (_verb, rest) => parseServiceShortcut("cs", "ChanServ", rest),

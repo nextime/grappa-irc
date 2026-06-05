@@ -1,4 +1,4 @@
-# cicchetto/e2e/compose.ghcr-vjt.yaml
+# frontends/cicchetto/e2e/compose.ghcr-vjt.yaml
 #
 # CI-only override that swaps `build:` → `image:` for the ircd stack
 # (bahamut hub + leaves + Anope services), pulling prebuilt images
@@ -26,7 +26,7 @@
 # changes needed.
 #
 # Drift risk: the `:main` tag floats. If the pinned submodule SHA in
-# cicchetto/e2e/infra differs from the SHA that produced the `:main`
+# frontends/cicchetto/e2e/infra differs from the SHA that produced the `:main`
 # image, the CI run uses a newer ircd than the source tree
 # represents. Mitigation when needed: pin to `:sha-<7chars>` via
 # `BAHAMUT_TAG=sha-XXXXXXX SERVICES_TAG=sha-XXXXXXX` env override

@@ -15,8 +15,8 @@ directories.
 | Gate              | Scope                          | Where the source lives           | How to run             |
 |-------------------|--------------------------------|----------------------------------|------------------------|
 | **Elixir**        | server logic, OTP, REST, channels | `test/grappa/`, `test/grappa_web/` | `scripts/test.sh`      |
-| **cic vitest**    | TS unit tests in jsdom         | `cicchetto/src/__tests__/`       | `scripts/bun.sh run test` |
-| **e2e Playwright**| full-stack browser flows       | `cicchetto/e2e/tests/`           | `scripts/integration.sh` |
+| **cic vitest**    | TS unit tests in jsdom         | `frontends/cicchetto/src/__tests__/`       | `scripts/bun.sh run test` |
+| **e2e Playwright**| full-stack browser flows       | `frontends/cicchetto/e2e/tests/`           | `scripts/integration.sh` |
 
 The CI pipeline runs all three on every push to main. Both `ci.yml`
 (Elixir + lint + audit + cic) and `integration.yml` (Playwright)
@@ -79,7 +79,7 @@ Every script is a thin wrapper around `docker compose run --rm <svc>
   so the docker compose project name + image cache + named volumes
   are shared across all worktrees;
 * bind-mounts the **worktree's** source files (`lib`, `test`,
-  `config`, `cicchetto/src`, etc.) so the code under test is the
+  `config`, `frontends/cicchetto/src`, etc.) so the code under test is the
   worktree's, not main's.
 
 This means: from any worktree, `scripts/test.sh` runs the worktree's
@@ -96,7 +96,7 @@ The authoritative source is the comment block at the top of each
 
 * **`scripts/test.sh`** → `scripts/mix.sh --env=test test --warnings-as-errors "$@"`. Forces `MIX_ENV=test` (auto-detect would use the live container's env, usually dev/prod, breaking sandbox).
 * **`scripts/check.sh`** → `scripts/mix.sh --env=dev ci.check` + `mix grappa.gen_wire_types --check` (wireTypes drift gate) + `scripts/bats.sh`. The `ci.check` alias (in `mix.exs`) chains: compile (warnings as errors), format check, credo, deps.audit, hex.audit, sobelow, doctor, `cmd env MIX_ENV=test mix test --warnings-as-errors`, dialyzer, docs. Mirrors CI exactly.
-* **`scripts/bun.sh`** → oneshot `oven/bun:1` against `cicchetto/`. `run test` = vitest. `run check` = biome + tsc. `install`, `add`, etc. forward to bun.
+* **`scripts/bun.sh`** → oneshot `oven/bun:1` against `frontends/cicchetto/`. `run test` = vitest. `run check` = biome + tsc. `install`, `add`, etc. forward to bun.
 * **`scripts/bats.sh`** → host-side bats v1.9.0 (submodule at `vendor/bats-core`) against `test/bin/`. NOT containerised — bats tests host-side bash dispatchers (`bin/grappa`).
 * **`scripts/integration.sh`** → `scripts/testnet.sh up` → `docker compose run --rm playwright-runner npx playwright test "$@"` → trap-on-exit `scripts/testnet.sh down`. `KEEP_STACK=1` opts out of tear-down.
 * **`scripts/testnet.sh`** → manages the stack standalone. `up` boots hub + leaves + services + grappa-test + nginx-test + seeder. `down` tears down + wipes `runtime/e2e/`. `probe` connects an oper-up client to leaf4 for `/links` + `/stats l`.
@@ -104,9 +104,9 @@ The authoritative source is the comment block at the top of each
 ## The e2e stack
 
 `scripts/integration.sh` orchestrates an all-in-one docker compose
-stack (`cicchetto/e2e/compose.yaml`):
+stack (`frontends/cicchetto/e2e/compose.yaml`):
 
-* **azzurra-testnet** (git submodule at `cicchetto/e2e/infra/`): hub + leaf-v4 + leaf-v6 + services. Bahamut IRCd + Anope-shape services so CAP/SASL/NickServ behave like real Azzurra.
+* **azzurra-testnet** (git submodule at `frontends/cicchetto/e2e/infra/`): hub + leaf-v4 + leaf-v6 + services. Bahamut IRCd + Anope-shape services so CAP/SASL/NickServ behave like real Azzurra.
 * **grappa-e2e-seeder** (oneshot): runs `mix ecto.migrate` + seeds 3 users (`vjt`, `admin-vjt`, `m9b-test`, `m9b-victim`) + binds them to bahamut-test + seeds 200 scrollback lines on `#bofh`. Idempotent at clean-volume time only — re-seeding a non-fresh volume fails on duplicate user rows.
 * **grappa-test**: the bouncer, dev image, source bind-mounted, points at `bahamut-test:6667`.
 * **cicchetto-build-test** (oneshot): `bun install --frozen-lockfile && bun run build` into bind-mounted `runtime/e2e/cicchetto-dist/`.
@@ -116,9 +116,9 @@ stack (`cicchetto/e2e/compose.yaml`):
 Cold bring-up: ~30s. Suite (~190 specs across chromium + webkit-iphone-15
 projects): ~3 min.
 
-E2E test outputs land in `cicchetto/e2e/test-results/` (failure
+E2E test outputs land in `frontends/cicchetto/e2e/test-results/` (failure
 artifacts: screenshot, video, trace.zip) and
-`cicchetto/e2e/playwright-report/`. Open a trace with
+`frontends/cicchetto/e2e/playwright-report/`. Open a trace with
 `npx playwright show-trace <path>/trace.zip`.
 
 ## Triaging a failing e2e: cascade vs flake vs real bug
@@ -221,9 +221,9 @@ These bite during cluster work; check the memory before re-investigating.
 ## When the test stack itself is broken
 
 * **`vendor/bats-core` not found** → `git submodule update --init vendor/bats-core`.
-* **`cicchetto/e2e/infra` empty** → `git submodule update --init`.
+* **`frontends/cicchetto/e2e/infra` empty** → `git submodule update --init`.
 * **`services.hub conflicts with imported resource`** (compose config parse) → docker compose is too old for the `include:` + per-service override pattern. Install **v5.0.2** (the CI pin in `.github/workflows/integration.yml`) into `~/.docker/cli-plugins/docker-compose` — user-local, no sudo. Stock distro plugins (e.g. Debian's 2.26.1) reject it.
-* **`checking context: no permission to read .../nginx-certs/nginx.key`** (image build) → running e2e as a NON-root user: `nginx-cert-init` writes the key root-owned 0600, and the classic (non-buildx) builder tars the context as the invoking user. Fixed in-repo via `.dockerignore` exclusions (root + `cicchetto/e2e/`); if it recurs, a new build context is pulling in the cert dir — add it to that context's `.dockerignore`. CI builds as root so never hits this.
+* **`checking context: no permission to read .../nginx-certs/nginx.key`** (image build) → running e2e as a NON-root user: `nginx-cert-init` writes the key root-owned 0600, and the classic (non-buildx) builder tars the context as the invoking user. Fixed in-repo via `.dockerignore` exclusions (root + `frontends/cicchetto/e2e/`); if it recurs, a new build context is pulling in the cert dir — add it to that context's `.dockerignore`. CI builds as root so never hits this.
 * **`Exqlite.Connection ... database is locked`** during `scripts/test.sh` → benign log noise from concurrent test teardown; the test still passes. If it ESCALATES to a failure, check `config/test.exs` pool size + `max_cases`.
 * **Bundle hash unchanged after a cic source edit** → not a cache bug (almost certainly). Verify via the sourcemap, then check that `tsc --noEmit` didn't silently fail by running `scripts/bun.sh run check` directly. See `feedback_minifier_mangles_identifiers`.
 * **`scripts/check.sh` hangs at the bats step in dev shell** → known sandbox-mode interaction; run gates individually for the duration of the session.

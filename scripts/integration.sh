@@ -31,7 +31,7 @@ set -euo pipefail
 
 . "$(dirname "$0")/_lib.sh"
 
-E2E_DIR="$SRC_ROOT/cicchetto/e2e"
+E2E_DIR="$SRC_ROOT/frontends/cicchetto/e2e"
 TESTNET="$(cd "$(dirname "$0")" && pwd)/testnet.sh"
 
 cleanup() {

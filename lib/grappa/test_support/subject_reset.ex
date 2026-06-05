@@ -51,7 +51,7 @@ if Mix.env() in [:dev, :test] do
         cp15-b6) strips the channel from operator-config autojoin
         permanently; the test seed expects `["#bofh"]` to be present
         every time. The fixture knows the seed contract
-        (`cicchetto/e2e/fixtures/seedData.ts:AUTOJOIN_CHANNELS`) and
+        (`frontends/cicchetto/e2e/fixtures/seedData.ts:AUTOJOIN_CHANNELS`) and
         passes it through.
 
     After the baseline write, `Session.get_window_state/3` is polled

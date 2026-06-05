@@ -45,9 +45,9 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
-// IMPORTANT: keep in lockstep with `cicchetto/src/lib/bundleHashRe.ts`
-// `BUNDLE_HASH_RE`. The e2e runner's TS project (cicchetto/e2e/
-// tsconfig.json) doesn't include cicchetto/src, and a cross-project
+// IMPORTANT: keep in lockstep with `frontends/cicchetto/src/lib/bundleHashRe.ts`
+// `BUNDLE_HASH_RE`. The e2e runner's TS project (frontends/cicchetto/e2e/
+// tsconfig.json) doesn't include frontends/cicchetto/src, and a cross-project
 // import via the runner's bind-mount fails ESM resolution under
 // Playwright's native Node loader. Inlining the regex is the
 // principle-aligned choice: ONE pattern, two surfaces, one comment

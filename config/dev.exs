@@ -48,7 +48,7 @@ config :phoenix, :stacktrace_depth, 20
 config :phoenix, :plug_init_mode, :runtime
 
 # Push notifications cluster B5 (2026-05-14) — fixed VAPID keypair
-# for dev/e2e. The integration harness (cicchetto/e2e/compose.yaml)
+# for dev/e2e. The integration harness (frontends/cicchetto/e2e/compose.yaml)
 # boots grappa-test under MIX_ENV=dev; without this, Application.
 # fetch_env!(:web_push_elixir, :vapid_public_key) crashes the
 # PushVapidController and any e2e push-trigger spec. Mirrors

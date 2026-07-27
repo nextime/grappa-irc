@@ -6042,7 +6042,6 @@ static void load_http_host_aliases(struct app *app) {
 int main(int argc, char **argv) {
     const char *mode = "auto";
     const char *login_override = NULL;
-    int argi = 1;
     /* Checked before the option loop so --help works from any position and
      * never requires the other arguments to be present. */
     for (int i = 1; i < argc; i++) {
@@ -6051,31 +6050,50 @@ int main(int argc, char **argv) {
             return 0;
         }
     }
-    while (argi < argc && strncmp(argv[argi], "--", 2) == 0) {
-        if (strcmp(argv[argi], "--user") == 0) mode = "user";
-        else if (strcmp(argv[argi], "--visitor") == 0) mode = "visitor";
-        else if (strcmp(argv[argi], "--share") == 0) mode = "share";
-        else if (strcmp(argv[argi], "--auto") == 0) mode = "auto";
-        else if (strcmp(argv[argi], "--login-email") == 0) {
-            if (argi + 1 >= argc) {
+    /* Options are accepted ANYWHERE, not only before the first positional.
+     *
+     * The old loop stopped at the first non-option argument, so
+     * `shottino https://host --user name pass` silently ignored --user:
+     * the client fell back to auto mode and the server classified the
+     * name as a VISITOR nick. Nothing said so — the run looked
+     * successful, just as the wrong kind of session, with different
+     * persistence and a different subject key.
+     *
+     * A flag that is read in one position and ignored in another is worse
+     * than one that is rejected: the failure is silent and the result is
+     * plausible. Positionals are collected separately so order stops
+     * mattering. */
+    const char *positional[8];
+    int positional_count = 0;
+    for (int i = 1; i < argc; i++) {
+        const char *a = argv[i];
+        if (strncmp(a, "--", 2) != 0) {
+            if (positional_count < (int)(sizeof(positional) / sizeof(positional[0])))
+                positional[positional_count++] = a;
+            continue;
+        }
+        if (strcmp(a, "--user") == 0) mode = "user";
+        else if (strcmp(a, "--visitor") == 0) mode = "visitor";
+        else if (strcmp(a, "--share") == 0) mode = "share";
+        else if (strcmp(a, "--auto") == 0) mode = "auto";
+        else if (strcmp(a, "--login-email") == 0) {
+            if (i + 1 >= argc) {
                 fprintf(stderr, "--login-email requires an email-like identifier\n");
                 return 2;
             }
             mode = "user";
-            login_override = argv[++argi];
-        } else if (strncmp(argv[argi], "--login-email=", 14) == 0) {
+            login_override = argv[++i];
+        } else if (strncmp(a, "--login-email=", 14) == 0) {
             mode = "user";
-            login_override = argv[argi] + 14;
-        }
-        else {
-            fprintf(stderr, "unknown option: %s\n", argv[argi]);
+            login_override = a + 14;
+        } else {
+            fprintf(stderr, "unknown option: %s\n", a);
             return 2;
         }
-        argi++;
     }
     bool share_mode = strcmp(mode, "share") == 0;
     int expected = share_mode ? 1 : (login_override ? 2 : 3);
-    if (argc - argi != expected) {
+    if (positional_count != expected) {
         /* Usage ERROR: stderr + exit 2. One definition of the text,
          * shared with --help, so the two cannot drift. */
         print_usage(stderr, argv[0]);
@@ -6096,11 +6114,11 @@ int main(int argc, char **argv) {
     char *share_base = NULL, *share_token = NULL;
     const char *server_url;
     if (share_mode) {
-        if (!split_share_url(argv[argi], &share_base, &share_token))
+        if (!split_share_url(positional[0], &share_base, &share_token))
             die("invalid share URL; expected https://host/share/<token>");
         server_url = share_base;
     } else {
-        server_url = argv[argi];
+        server_url = positional[0];
     }
     startup("parsing server URL %s", server_url);
     if (!parse_url(server_url, &app->url)) die("invalid base URL: %s", server_url);
@@ -6117,8 +6135,8 @@ int main(int argc, char **argv) {
         free(share_base);
         free(share_token);
     } else {
-        const char *identifier = login_override ? login_override : argv[argi + 1];
-        const char *password = login_override ? argv[argi + 1] : argv[argi + 2];
+        const char *identifier = login_override ? login_override : positional[1];
+        const char *password = login_override ? positional[1] : positional[2];
         if (!login_override && strchr(identifier, '@') == NULL) snprintf(app->login_nick, sizeof(app->login_nick), "%s", identifier);
         char *login_id = login_identifier_for_mode(mode, identifier);
         startup("authenticating as %s", login_id);

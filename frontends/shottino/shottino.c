@@ -3568,6 +3568,20 @@ static int media_extra_rows(const struct inline_media *m) {
     return 0;
 }
 
+/* Open the layout log once, if SHOTTINO_LAYOUT_LOG is set. Returns NULL
+ * when the diagnostic is off, which is the normal case — the call sites
+ * check for NULL and cost nothing. */
+static FILE *layout_log(void) {
+    static FILE *f;
+    static bool tried;
+    if (!tried) {
+        tried = true;
+        const char *path = getenv("SHOTTINO_LAYOUT_LOG");
+        if (path && *path) f = fopen(path, "w");
+    }
+    return f;
+}
+
 /* One-character marker for a non-joined window state. A joined window (or
  * one whose state the server has not told us yet) gets a blank, so only
  * genuinely-abnormal windows draw the eye. */
@@ -3833,11 +3847,39 @@ static void draw(struct app *app) {
             visible_count++;
         }
     }
+    /* Layout diagnostic, off unless SHOTTINO_LAYOUT_LOG names a file.
+     *
+     * A scrollback row's height is computed in TWO places — here, to size
+     * the scroll region, and again in the draw loop, to consume it. Every
+     * "a line went missing" bug in this client so far has been those two
+     * disagreeing, and the disagreement is invisible from the screen:
+     * you see a missing line, not which pass was wrong. This dumps both
+     * sides so a report can carry the numbers instead of a description.
+     *
+     * Written from the draw path, which already holds app->lock. */
+    FILE *lay = layout_log();
+    if (lay) {
+        fprintf(lay, "\n== frame scroll_y=%d scroll_h=%d visible=%zu total=%d\n", scroll_y,
+                scroll_h, visible_count, total_visible_lines);
+        for (size_t k = 0; k < visible_count; k++) {
+            int mi = app->log_media[visible[k]];
+            fprintf(lay, "   row=%zu h=%d text=%d media=%d%s :: %.56s\n", visible[k], heights[k],
+                    text_heights[k], mi,
+                    mi >= 0 && mi < (int)app->media_count
+                        ? (app->media[mi].state == IM_READY      ? " READY"
+                           : app->media[mi].state == IM_FETCHING ? " FETCHING"
+                           : app->media[mi].state == IM_FAILED   ? " FAILED"
+                                                                 : " IDLE")
+                        : "",
+                    app->log[visible[k]]);
+        }
+    }
     int max_offset = total_visible_lines > scroll_h ? total_visible_lines - scroll_h : 0;
     if ((int)app->scrollback_offset > max_offset) app->scrollback_offset = (size_t)max_offset;
     int skip_lines = max_offset - (int)app->scrollback_offset;
     int used_lines = 0;
     bool divider_drawn = false;
+    int drawn_rows = 0;
     for (size_t vi = 0; vi < visible_count; vi++) {
         if (skip_lines >= heights[vi]) {
             skip_lines -= heights[vi];
@@ -3911,7 +3953,18 @@ static void draw(struct app *app) {
             }
         }
         used_lines += draw_lines;
+        drawn_rows++;
         skip_lines = 0;
+    }
+    if (lay) {
+        /* used < scroll_h with rows left undrawn means the budget ran out
+         * early: the bottom of the buffer was clipped. used == scroll_h
+         * with rows left is the normal "scrolled" case. */
+        fprintf(lay, "   END max_off=%d skip=%d used=%d/%d drawn=%d/%zu%s\n", max_offset,
+                max_offset - (int)app->scrollback_offset, used_lines, scroll_h, drawn_rows,
+                visible_count,
+                (used_lines > scroll_h) ? "  *** OVERFLOW: budget exceeded ***" : "");
+        fflush(lay);
     }
 
     /* A window in a terminal state says WHY on the status line — the

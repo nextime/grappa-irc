@@ -157,6 +157,31 @@ Media link previews:
 - **Archive** — `/archive` lists archived windows, `/archive open <target>`
   reopens one, `/archive purge <target>` deletes its history.
 
+## Diagnosing a missing or misplaced line
+
+A scrollback row's height is computed twice — once to size the scroll
+region, once to draw it — and every "a line went missing" bug so far has
+been those two disagreeing. The screen shows you the symptom, not which
+pass was wrong, so shottino can dump both:
+
+```sh
+SHOTTINO_LAYOUT_LOG=/tmp/shottino-layout.log shottino …
+```
+
+Reproduce the problem, quit, and read the last frame. Each row shows its
+reserved height (`h`), its text-only height (`text`), and any attached
+image with its decode state. The `END` line shows the scroll budget:
+
+```
+   row=13 h=11 text=1 media=0 READY :: [net/#chan] <bob> pic https://…
+   row=14 h=1  text=1 media=-1      :: [net/#chan] <carol> the next message
+   END max_off=9 skip=9 used=18/18 drawn=8/17
+```
+
+`used` greater than the region height is flagged `*** OVERFLOW ***` and
+means the budget was exceeded — the bottom of the buffer got clipped.
+The log is written only when the variable is set.
+
 ## Window state
 
 Windows mirror the server's state machine and shottino never originates a

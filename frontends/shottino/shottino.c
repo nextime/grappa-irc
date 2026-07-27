@@ -3787,6 +3787,7 @@ static void draw(struct app *app) {
     int heights[LOG_LINES];
     size_t visible_count = 0;
     static int text_heights[LOG_LINES];
+    bool divider_counted = false;
     int total_visible_lines = 0;
     for (size_t i = 0; i < app->log_count; i++) {
         if (strncmp(app->log[i], "[", 1) != 0 || strncmp(app->log[i], wanted_prefix, strlen(wanted_prefix)) == 0) {
@@ -3799,6 +3800,18 @@ static void draw(struct app *app) {
              * pushed later rows past the scroll region and over the input
              * box, leaving the client looking dead. */
             text_heights[visible_count] = heights[visible_count];
+            /* The unread divider occupies a row of its own above the first
+             * unread message, and the DRAW pass spends one (`used_lines +=
+             * 1`). Measuring has to reserve it too: otherwise the budget is
+             * a line short of what gets drawn, the content overflows the
+             * region by one, and the bottom line — the newest message —
+             * never appears. Reserved on the same row the draw pass tests,
+             * so the two agree. */
+            if (!divider_counted && w->last_read_id > 0 &&
+                app->log_ids[i] > w->last_read_id) {
+                heights[visible_count] += 1;
+                divider_counted = true;
+            }
             /* An image reserves rows UNDER its message line. The height is
              * known before the picture is decoded (the cell box is chosen
              * from the available width), so the layout does not jump when

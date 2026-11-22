@@ -93,6 +93,19 @@ jobs:
         # gates identically.
         run: mix grappa.wire_pin --check
 
+      - name: Protocol bump is base + 1 (#2695)
+        # The step above proves the branch agrees WITH ITSELF, so two branches
+        # cut at 64 that both claim 65 for different shapes each pass it. This
+        # compares the pin with the BASE's: a moved shape must claim exactly
+        # the base's number + 1, which makes a bump collision a red build
+        # instead of a hand check typed into protocol.ex. Needs the
+        # fetch-depth: 0 above.
+        #
+        # The base is the target branch's tip on a PR. On a push to main it is
+        # the first parent: origin/main IS the pushed commit there, and a gate
+        # comparing a pin with itself measures nothing.
+        run: scripts/protocol-bump-gate.sh "${{ github.event_name == 'push' && 'HEAD^1' || 'origin/main' }}"
+
       - name: Format check
         run: mix format --check-formatted
 

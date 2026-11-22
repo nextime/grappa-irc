@@ -602,6 +602,30 @@ Two things a reader will otherwise trip on:
   while this was being built, complete with a green test suite reading
   main's copy.
 
+**The bump itself is one edit (#2695).** Change `@protocol_version` in
+`lib/grappa/protocol.ex`, then `WRITABLE_CIC=1 scripts/mix.sh --env=dev
+grappa.gen_wire_types` carries the number to both clients
+(`PROTOCOL_VERSION` in cic's `wireTypes.ts`, `WIRE_PROTOCOL_VERSION` in
+shottino's `wire_gen.h`), and `grappa.wire_pin --update` refreshes the pin.
+Neither client holds a literal any more, so there is nothing else to grep.
+
+**Its sibling sees the OTHER branches: `scripts/protocol-bump-gate.sh`.**
+`wire_pin --check` proves a branch agrees with itself, so two branches cut
+at N that both claim N+1 for different shapes each pass it. The gate reads
+the base ref's pin at its TIP, not at the merge base, where the collision
+does not exist yet. A moved shape must claim exactly the base's number + 1,
+and a number below the base or past + 1 is refused too:
+
+```sh
+scripts/protocol-bump-gate.sh              # against origin/main
+scripts/protocol-bump-gate.sh vjt/main     # against another base
+```
+
+In CI it runs right after `wire_pin --check`, against `origin/main` on a PR
+and against `HEAD^1` on a push to main. It is not in `check.sh`, for the same
+reason as `design-notes-gate.sh`: it needs a base ref, and whether a laptop's
+`origin/main` is fresh is not something a local gate can know.
+
 ### `GRAPPA_CACHE_ID` — opt-in per-worker build caches (#1263)
 
 The shared cache above is why two people (or two agents) on one host

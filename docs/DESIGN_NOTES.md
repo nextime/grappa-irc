@@ -8438,3 +8438,31 @@ they look. The "Last read" note in `wire.h` stays, as the record of that
 look. The trade is accepted because X4 asked for it, and because the pin
 forced a NUMBER edit, not a read: the 2026-09-22 review found five drifts
 under a green pin.
+<!-- entry #2695b -->
+
+---
+
+## 2026-11-22 — #2695: a protocol bump is the base's number + 1, checked against the base's tip
+
+X4 item 2. `mix grappa.wire_pin --check` proves a branch is consistent with
+itself, so it cannot see two branches cut at 64 that both claim 65 for
+different shapes. Each passes, and the second to land ships a 65 that
+means two shapes. Until now the guard was prose: "Checked for a collision
+before claiming N" appears 30 times in `protocol.ex`.
+
+`scripts/protocol-bump-gate.sh` compares this tree's `priv/wire/shape.pin`
+with the base ref's. A moved digest must claim exactly the base's number + 1.
+A number below the base, or past + 1, is refused whatever the digest.
+A +1 with an unchanged digest passes: the ruling makes every shape change
+bump, and it does not forbid other bumps.
+
+* **The base is read at its TIP, not at the merge base.** This repeats
+  design-notes-gate check 3: the colliding bump lands on main after the
+  branch was cut, so at the merge base the branch's 65 is a correct +1.
+  Measured with a mutant that reads the merge base: the bats suite's
+  collision case and its tip case both go red, and nothing else does.
+* **A shell gate, not a `wire_pin` mode.** `wire_pin` is offline by
+  construction and its test asserts that on its own source. This check
+  needs git and a base ref, so it lives where `design-notes-gate.sh`
+  lives. In CI the base is `origin/main` on a PR and `HEAD^1` on a push,
+  because comparing `origin/main` with itself measures nothing.

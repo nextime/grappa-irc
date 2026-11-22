@@ -728,6 +728,49 @@ defmodule Mix.Tasks.Grappa.GenWireTypesTest do
     end
   end
 
+  # #2695 — the protocol number used to be a hand literal in four places and
+  # three languages. It is now written ONCE, in `Grappa.Protocol`, and these
+  # artefacts carry it to the two clients.
+  describe "the protocol version reaches both clients (#2695)" do
+    test "wireTypes.ts declares the number the server speaks" do
+      assert GenWireTypes.generate_types_file() =~
+               "\nexport const PROTOCOL_VERSION = #{Grappa.Protocol.version()};\n"
+    end
+
+    test "the shottino header defines the number the server speaks" do
+      assert GenWireTypes.generate_c_header() =~
+               "\n#define WIRE_PROTOCOL_VERSION #{Grappa.Protocol.version()}\n"
+    end
+
+    test "the shottino header is include-guarded" do
+      header = GenWireTypes.generate_c_header()
+      assert header =~ "#ifndef SHOTTINO_WIRE_GEN_H\n#define SHOTTINO_WIRE_GEN_H\n"
+      assert String.ends_with?(header, "#endif\n")
+    end
+
+    test "the committed wireTypes.ts is the generated one" do
+      assert GenWireTypes.compare_committed(
+               GenWireTypes.generate_types_file(),
+               GenWireTypes.types_path()
+             ) == :ok
+    end
+
+    test "the committed shottino header is the generated one" do
+      assert GenWireTypes.compare_committed(
+               GenWireTypes.generate_c_header(),
+               GenWireTypes.c_header_path()
+             ) == :ok
+    end
+
+    # The number is a fact ABOUT the shape, not part of it. Inside the digest,
+    # every bump would move the digest on its own, and `wire_pin`'s refusal
+    # ("the shape moved and the number did not") could no longer tell a shape
+    # change from the bump that answers it.
+    test "the version is not part of what the wire pin digests" do
+      refute Mix.Tasks.Grappa.WirePin.shape_text() =~ "PROTOCOL_VERSION"
+    end
+  end
+
   describe "the committed inventory" do
     test "generate_inventory/0 agrees with the committed artefact" do
       assert GenWireTypes.compare_committed(

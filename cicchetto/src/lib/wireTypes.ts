@@ -2126,3 +2126,10 @@ export type MeJSONVisitorMeJson = {
 };
 
 export type MeJSONMeJson = MeJSONUserMeJson | MeJSONVisitorMeJson;
+
+// === Grappa.Protocol ===
+// The wire protocol this bundle speaks: `Grappa.Protocol.version/0` at
+// generation time (#2695). It is what the WS handshake declares as
+// `client_proto`. It is not part of the shape `mix grappa.wire_pin`
+// digests — it is the number that digest is pinned against.
+export const PROTOCOL_VERSION = 65;

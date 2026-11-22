@@ -8389,3 +8389,52 @@ the first reading better. That is an inference, not a measurement.
   baseline comes after a page fetch.
 * `force_set/4` (dev/test only) is not guarded: it plants arbitrary states
   for e2e, and whether the window exists is the scenario's business.
+<!-- entry #2695a -->
+
+---
+
+## 2026-11-22 — #2695: the protocol number is written once and generated into both clients
+
+Architecture review 2026-11-21, finding X4, item 1. The wire protocol number
+was a hand literal in four places and three languages: `@protocol_version`,
+the `@spec version() :: N` beside it, cic's `CLIENT_PROTOCOL_VERSION` in
+`socket.ts` and shottino's `WIRE_PROTOCOL_VERSION` in `wire.h`. Two tests held
+the clients equal to the server, each one knowing one client
+(`protocol_test.exs`, `test_commands.c`). `protocol.ex` itself recorded a rebase
+merging the spec site clean on the base's value.
+
+### What it is now
+
+* `Grappa.Protocol` holds the number once. Both specs splice the attribute
+  in with `unquote/1`. A bare `@attr` in a typespec is read as a type name
+  and does not compile, which is measured, not assumed. The spec stays a
+  literal type, so the `:underspecs` idiom holds.
+* `mix grappa.gen_wire_types` carries it to the clients.
+  `PROTOCOL_VERSION` goes at the tail of `wireTypes.ts`, and `socket.ts`
+  re-exports it as `CLIENT_PROTOCOL_VERSION`. The new
+  `frontends/shottino/wire_gen.h` defines `WIRE_PROTOCOL_VERSION`, and
+  `wire.h` includes it. `--check` covers both, so one gate replaces the
+  two per-client pins. Both pins are deleted. `protocol_test.exs` keeps
+  only a carrier test, which fails if `socket.ts` goes back to a literal.
+* The number is appended in `generate_types_file/0` and NOT inside
+  `generate/0`, which is what `mix grappa.wire_pin` digests. Inside the
+  digest, every bump would move the digest by itself, and the pin's one
+  refusal ("the shape moved, the number did not") could no longer tell a
+  shape change from the bump that answers it. Measured: after this change
+  the pin still reads `wire shape and protocol 64 agree`.
+* `scripts/_lib.sh` mounts `frontends/shottino` into the worktree
+  container, under the same `WRITABLE_CIC` flag as `cicchetto/src`.
+  Without it, a worktree `--check` compares against MAIN's header.
+
+### What generating it gave up
+
+`wire.h` called its literal a deliberate tripwire. A server bump turned
+`test_commands` red, so somebody read what had moved and judged whether
+a terminal cared. Nine bumps had gone unread before the pin existed. A
+generated number moves without anyone reading anything. What still forces
+a read is the kind-parity test, which holds shottino to every event kind
+cicchetto narrows. A new FIELD on a known kind now reaches nobody unless
+they look. The "Last read" note in `wire.h` stays, as the record of that
+look. The trade is accepted because X4 asked for it, and because the pin
+forced a NUMBER edit, not a read: the 2026-09-22 review found five drifts
+under a green pin.

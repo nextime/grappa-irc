@@ -139,7 +139,7 @@ tests/test_ws: tests/test_ws.c tests/test.h ws.c ws.h
 tests/test_json: tests/test_json.c tests/test.h json.c json.h
 	$(CC) $(CPPFLAGS) $(TEST_CFLAGS) -o $@ tests/test_json.c json.c
 
-tests/test_wire: tests/test_wire.c tests/test.h wire.c wire.h json.c json.h
+tests/test_wire: tests/test_wire.c tests/test.h wire.c wire.h wire_gen.h json.c json.h
 	$(CC) $(CPPFLAGS) $(TEST_CFLAGS) -o $@ tests/test_wire.c wire.c json.c
 
 tests/test_alias: tests/test_alias.c tests/test.h alias.c alias.h

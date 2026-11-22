@@ -1691,50 +1691,29 @@ defmodule Grappa.Protocol do
   @min_protocol_version 1
 
   @doc "The protocol version the server currently speaks."
-  # A literal (not `pos_integer()`) so the spec matches the success typing of
-  # the literal constant under Dialyzer `:underspecs` — the codebase idiom
-  # for a constant-returning function (`Grappa.Notify.max_entries/0 :: 64`,
-  # `Grappa.IRC.Identifier.max_nick_length/0 :: 30`). A bump edits the spec
-  # alongside `@protocol_version`; the spec doubles as the bump tripwire,
-  # and now that the bump is routine the tripwire is what keeps it from
-  # being done half-way.
+  # The literal is read through the attribute, so the number is written ONCE
+  # (#2695). It used to be typed four times — here, in this spec, in cic's
+  # `socket.ts` and in shottino's `wire.h` — and a rebase merged the spec
+  # site clean on the base's value with no conflict marker, while the two
+  # client sites were in files no merge ever compares (measured on issue
+  # 2150 and again on #2324). The clients now take the number from the
+  # generator (`mix grappa.gen_wire_types`: `PROTOCOL_VERSION` in
+  # `wireTypes.ts`, `WIRE_PROTOCOL_VERSION` in `frontends/shottino/wire_gen.h`),
+  # and `--check` turns a stale copy red.
   #
-  # 🔴 THE NUMBER LIVES IN FOUR PLACES, AND A REBASE WALKS PAST THREE OF
-  # THEM. Measured on issue 2150 rebasing onto v22 (sites 1-3); site 4 was
-  # missing from this list until issue 1365 leg 2, and a bump that trusted
-  # the list went red on it (#2324):
-  #
-  #   1. `@protocol_version` above        — CONFLICTS. The prose around it
-  #      diverges between branches, so git stops and a human decides.
-  #   2. `@spec version() :: N`, below    — MERGES CLEAN. The line is
-  #      byte-identical on both sides, so there is nothing to conflict on:
-  #      git took the base's `:: 22` with no marker and the tree compiled.
-  #   3. `CLIENT_PROTOCOL_VERSION` in     — NEVER CONSIDERED. Another file,
-  #      `cicchetto/src/lib/socket.ts`       another language. No merge will
-  #      ever raise it, in either direction.
-  #   4. `WIRE_PROTOCOL_VERSION` in       — NEVER CONSIDERED either, and C.
-  #      `frontends/shottino/wire.h`         shottino's `test_commands` pins
-  #      it to this file, so a bump that skips it is red in the shottino CI
-  #      job and in no Elixir gate.
-  #
-  # So this spec is a tripwire against a half-done bump TYPED BY HAND, and
-  # not against a rebase — one you never step on cannot trip. Sites 3 and
-  # 4 are worse. On issue 2150 site 3 was simply never edited, the pair stayed unequal
-  # from the wire commit onward, and the ONLY thing that said so was
-  # `protocol_test.exs` — which runs in `scripts/check.sh` and in no
-  # targeted suite, so five commits carried the inequality with no red.
-  #
-  # The rule, for whoever is mid-rebase: a conflict on ONE site of a
-  # duplicated constant is positive evidence that the OTHER sites were
-  # decided for you. Grep every site for the OLD number before continuing,
-  # including the ones that are not Elixir.
-  @spec version() :: 65
+  # Still a LITERAL type, not `pos_integer()`: `unquote/1` splices the
+  # attribute's value in at compile time (a bare `@attr` in a typespec is
+  # read as a type name and does not compile), so the spec keeps matching
+  # the success typing of the constant under Dialyzer `:underspecs`, the
+  # codebase idiom for a constant-returning function
+  # (`Grappa.Notify.max_entries/0 :: 64`).
+  @spec version() :: unquote(@protocol_version)
   def version, do: @protocol_version
 
   @doc """
   The oldest client protocol version the server still accepts. A client
   declaring below this is refused at the WS handshake with 426.
   """
-  @spec min_version() :: 1
+  @spec min_version() :: unquote(@min_protocol_version)
   def min_version, do: @min_protocol_version
 end

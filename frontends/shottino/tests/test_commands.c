@@ -225,7 +225,7 @@ TEST(nothing_spells_its_own_version) {
  * "current", which is what shottino did — and "current" is a claim a
  * client that was last taught the wire at v21 cannot make. The URL is
  * built from ONE number so it cannot say something else, and that
- * number lives in wire.h beside the parsers it describes. `vsn` is
+ * number is generated from the server's (wire_gen.h, #2695). `vsn` is
  * phoenix's transport serialiser version and is a different thing. */
 TEST(the_handshake_declares_the_protocol_it_speaks) {
     char *req = ws_upgrade_request("grappa.example", "KEY==", "TOK");
@@ -286,8 +286,8 @@ static char *read_repo_file(const char *rel) {
 /* The CLOSED SETS shottino mirrors are the server's, in the server's
  * order — pinned to the Elixir that declares them.
  *
- * The version pin below proves someone read `protocol.ex`; it does not
- * prove shottino learned what moved. It did not: the 2026-09-22
+ * The old version pin (now generated, #2695) proved someone read
+ * `protocol.ex`; it did not prove shottino learned what moved. It did not: the 2026-09-22
  * architecture review measured five drifts under a green pin, two of
  * them closed sets that made shottino DROP an event whole — `:failing`
  * (every connection_state_changed touching it) and `:admin` (every
@@ -471,49 +471,6 @@ TEST(the_e2e_closed_sets_are_the_servers) {
                    wire_pairing_close_reason_count());
     pin_closed_set(src, "E2E_REQUESTS_WIRE_WIRE_STATE", spell_req, wire_e2e_request_state_count());
     free(src);
-}
-
-/* The number shottino declares is the number the server publishes.
- *
- * `Grappa.Protocol` bumps `@protocol_version` on every wire-shape change,
- * additive included, and cic's `wire_pin` reddens when the shape moves
- * under a still number. shottino had no such tripwire, which is how it
- * sat unaware through nine bumps. This is it: when the server's number
- * moves, this test reddens, and whoever bumps it reads what changed
- * (`git log -p lib/grappa/protocol.ex`), teaches wire.c the new fields
- * or decides they do not apply to a terminal, and moves the constant.
- * A server newer than the client is NOT a failure at runtime — the wire
- * is additive — so this is a build-time question for a human, never a
- * refusal for the user. Read off disk, because the constant must agree
- * with the SOURCE the release is cut from, not with a running server. */
-TEST(the_declared_protocol_is_the_one_the_server_publishes) {
-    const char *paths[] = {"../../lib/grappa/protocol.ex", "../../../lib/grappa/protocol.ex"};
-    char *ex = NULL;
-    for (size_t i = 0; i < 2 && !ex; i++) {
-        FILE *f = fopen(paths[i], "rb");
-        if (!f) continue;
-        fseek(f, 0, SEEK_END);
-        long n = ftell(f);
-        rewind(f);
-        if (n > 0) {
-            ex = malloc((size_t)n + 1);
-            size_t got = fread(ex, 1, (size_t)n, f);
-            ex[got] = 0;
-        }
-        fclose(f);
-    }
-    if (!ex) fprintf(stderr, "  lib/grappa/protocol.ex not found — run from the repo checkout\n");
-    CHECK(ex != NULL);
-    if (!ex) return;
-    const char *at = strstr(ex, "\n  @protocol_version ");
-    CHECK(at != NULL);
-    long server = at ? strtol(at + strlen("\n  @protocol_version "), NULL, 10) : -1;
-    if (server != WIRE_PROTOCOL_VERSION)
-        fprintf(stderr, "  server publishes v%ld, wire.h declares v%d — read what moved and "
-                        "update WIRE_PROTOCOL_VERSION\n",
-                server, WIRE_PROTOCOL_VERSION);
-    CHECK_LONG(server, WIRE_PROTOCOL_VERSION);
-    free(ex);
 }
 
 /* The two call defaults are only correct TOGETHER.
@@ -773,7 +730,6 @@ int main(void) {
     RUN(nothing_spells_its_own_version);
     RUN(the_handshake_declares_the_protocol_it_speaks);
     RUN(a_protocol_gap_names_its_direction);
-    RUN(the_declared_protocol_is_the_one_the_server_publishes);
     RUN(the_closed_sets_are_the_servers_in_the_servers_order);
     RUN(every_kind_cicchetto_narrows_is_known_here);
     RUN(the_e2e_closed_sets_are_the_servers);

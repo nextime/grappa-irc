@@ -1,11 +1,16 @@
 defmodule Mix.Tasks.Grappa.GenWireTypes do
-  @shortdoc "Generate cicchetto/src/lib/wireTypes.ts from Grappa.*.Wire typespecs"
+  @shortdoc "Generate the client wire mirrors (cic's wireTypes.ts + wireSchema.ts, shottino's wire_gen.h)"
 
   @moduledoc """
   Walks every module under `lib/grappa/**/*wire.ex` (both the user-facing
   `wire.ex` modules and the operator-facing `admin_wire.ex` modules), parses
   `@type` declarations via Code.Typespec.fetch_types/1, emits a single
   deterministic TypeScript file at `cicchetto/src/lib/wireTypes.ts`.
+
+  It also carries `Grappa.Protocol.version/0` to both clients (#2695):
+  `PROTOCOL_VERSION` at the tail of `wireTypes.ts` and `WIRE_PROTOCOL_VERSION`
+  in `frontends/shottino/wire_gen.h`. A server bump therefore reaches the
+  clients by regenerating, and `--check` is red until it has.
 
   ## Usage
 
@@ -70,11 +75,23 @@ defmodule Mix.Tasks.Grappa.GenWireTypes do
   the declaration order (no sort/dedup) so regen output is stable and
   diffs don't flicker.
   """
-  use Boundary, top_level?: true, deps: []
+  use Boundary, top_level?: true, deps: [Grappa.Protocol]
 
   use Mix.Task
 
   @output_path "cicchetto/src/lib/wireTypes.ts"
+
+  # #2695 — shottino's half of the protocol number. The number used to be a
+  # hand literal in four places and three languages (`@protocol_version`, its
+  # `@spec`, cic's `socket.ts`, shottino's `wire.h`), held equal by two tests
+  # that each knew one client, and a rebase merged the `@spec` site clean on
+  # the wrong value. Generated, the clients cannot disagree with the server
+  # and `--check` is the one gate for all of them.
+  #
+  # Named for the WIRE rather than for the number: review X6 (the shottino
+  # closed-set mirror) has the same cure, and one generated C artefact is
+  # meant to carry both.
+  @c_header_path "frontends/shottino/wire_gen.h"
 
   # #429 — the RUNTIME half of the same mirror. `wireTypes.ts` is erased at
   # `tsc` time, so a hand-written narrower was the only thing standing at the
@@ -157,9 +174,10 @@ defmodule Mix.Tasks.Grappa.GenWireTypes do
     Mix.Task.run("compile")
 
     artifacts = [
-      {@output_path, generate()},
+      {@output_path, generate_types_file()},
       {@schema_output_path, generate_schema()},
-      {@inventory_output_path, generate_inventory()}
+      {@inventory_output_path, generate_inventory()},
+      {@c_header_path, generate_c_header()}
     ]
 
     if opts[:check] do
@@ -192,6 +210,67 @@ defmodule Mix.Tasks.Grappa.GenWireTypes do
     |> Enum.join("\n\n")
     |> wrap_with_header()
   end
+
+  @doc """
+  `wireTypes.ts` as committed: the wire shape (`generate/0`) followed by the
+  protocol number.
+
+  The number is appended HERE and not inside `generate/0` on purpose:
+  `mix grappa.wire_pin` digests `generate/0`, and a digest that contained the
+  version would move on every bump by itself, so its one refusal — "the shape
+  moved and the number did not" — could no longer tell a shape change from
+  the bump that answers it.
+  """
+  @spec generate_types_file() :: String.t()
+  def generate_types_file do
+    generate() <>
+      """
+
+      // === Grappa.Protocol ===
+      // The wire protocol this bundle speaks: `Grappa.Protocol.version/0` at
+      // generation time (#2695). It is what the WS handshake declares as
+      // `client_proto`. It is not part of the shape `mix grappa.wire_pin`
+      // digests — it is the number that digest is pinned against.
+      export const PROTOCOL_VERSION = #{Grappa.Protocol.version()};
+      """
+  end
+
+  @doc """
+  shottino's generated header: the protocol number as a C `#define`.
+
+  `WIRE_PROTOCOL_VERSION` keeps its name so nothing in shottino moves but the
+  include. A plain integer token, so it works in `#if` and in `printf("%d")`
+  alike, which are the two ways shottino reads it.
+  """
+  @spec generate_c_header() :: String.t()
+  def generate_c_header do
+    """
+    /* GENERATED FILE — DO NOT EDIT
+     * Run `scripts/mix.sh grappa.gen_wire_types` to regenerate.
+     * Source: Grappa.Protocol.version/0
+     *
+     * The wire protocol this client speaks (#2695): the number it declares
+     * as `client_proto` on the WS handshake and compares with the server's
+     * at connect. Written once, in lib/grappa/protocol.ex, and carried here
+     * by the generator, so this file can never disagree with the server it
+     * was built beside. What shottino READ of each bump is a different fact
+     * and stays in wire.h, as prose. */
+    #ifndef SHOTTINO_WIRE_GEN_H
+    #define SHOTTINO_WIRE_GEN_H
+
+    #define WIRE_PROTOCOL_VERSION #{Grappa.Protocol.version()}
+
+    #endif
+    """
+  end
+
+  @doc false
+  @spec types_path() :: Path.t()
+  def types_path, do: @output_path
+
+  @doc false
+  @spec c_header_path() :: Path.t()
+  def c_header_path, do: @c_header_path
 
   defp wire_modules do
     @wire_glob

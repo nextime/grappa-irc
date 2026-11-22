@@ -90,6 +90,12 @@ if [ "$SRC_ROOT" != "$REPO_ROOT" ]; then
         -v "$SRC_ROOT/priv/wire:/app/priv/wire"
         -v "$SRC_ROOT/infra:/app/infra:ro"
         -v "$SRC_ROOT/cicchetto/src:/app/cicchetto/src:$cic_mode"
+        # frontends/shottino/ — the generated wire_gen.h (#2695) is a
+        # `gen_wire_types` artefact, so the same WRITABLE_CIC flag governs it:
+        # RO for `--check`, RW to regenerate. Without the override a worktree
+        # `--check` compares the generator against MAIN's header and can
+        # never go green on the branch that moves the number.
+        -v "$SRC_ROOT/frontends/shottino:/app/frontends/shottino:$cic_mode"
         -v "$SRC_ROOT/mix.exs:/app/mix.exs:ro"
         # VERSION is the version SSOT, read at COMPILE time by mix.exs +
         # lib/grappa/version.ex. Root-level, so it needs its own override or

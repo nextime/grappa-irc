@@ -222,8 +222,10 @@ defmodule Mix.Tasks.Grappa.WirePin do
     Fix, in this order:
 
       1. edit @protocol_version in #{@protocol_source}: #{version} -> #{version + 1}
-      2. run `mix grappa.wire_pin --update` to refresh #{@pin_path}
-      3. commit both, and say in the message what moved on the wire
+      2. run `mix grappa.gen_wire_types` — it carries the number to both
+         clients (cic's wireTypes.ts, shottino's wire_gen.h; #2695)
+      3. run `mix grappa.wire_pin --update` to refresh #{@pin_path}
+      4. commit them together, and say in the message what moved on the wire
 
     If the shape change was NOT intended, that diff is the finding — a
     typespec moved that you did not mean to move.

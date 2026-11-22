@@ -13,10 +13,11 @@ defmodule Grappa.ProtocolTest do
   The last two describes are the odd ones out and deliberately so: they read
   cic's source. #1379 made cicchetto DECLARE its protocol version, which turns
   the 426 refusal from unreachable-against-cic into live-against-cic — so
-  raising `min_version/0` now bricks every un-updated bundle at the handshake.
-  That consequence has to be visible at the commit that raises the floor, and
-  only a test spanning both sides can show it. #1393d added the mirror-image
-  constant on cic's side and #1654 pins it here for the same reason.
+  raising `min_version/0` bricks every DEPLOYED bundle older than the floor.
+  Since #2695 the declared number is generated from `version/0`, so what this
+  file pins on that side is that it STAYS generated. #1393d added the
+  mirror-image constant on cic's side (`MIN_SERVER_PROTOCOL_VERSION`, still a
+  hand literal: it is a different number by design) and #1654 pins it here.
   `cicchetto/src` is mounted into the Elixir test container
   (`scripts/_lib.sh`), so this reads the change under test, not main's copy —
   the same reasoning that put the version carrier's cic half on the cic side
@@ -37,76 +38,29 @@ defmodule Grappa.ProtocolTest do
     end
   end
 
-  describe "the floor vs what cicchetto declares (#1379)" do
+  # #1379 made cicchetto DECLARE its protocol version on the handshake, and
+  # #1973 pinned the declaration to `version/0` here, because the hand literal
+  # in `socket.ts` had lagged the server for 14 of its first 22 days. Since
+  # #2695 there is no literal to lag: `socket.ts` re-exports `PROTOCOL_VERSION`
+  # from the GENERATED `wireTypes.ts`, whose value `gen_wire_types --check`
+  # holds to `version/0`. What is left to pin is the carrier itself — a
+  # constant typed back in by hand is exactly how the drift returns, and
+  # nothing else would notice.
+  #
+  # The floor pin (#1379, `cic >= min_version/0`) went with it: the declared
+  # number IS `version/0` now, so it is the `min_version <= version` test above.
+  describe "what cicchetto declares (#1379, #1973, #2695)" do
     @cic_socket "cicchetto/src/lib/socket.ts"
 
-    test "cicchetto declares a CLIENT_PROTOCOL_VERSION at all" do
-      # The carrier itself. Deleting the constant (or renaming it) is how the
-      # declaration silently reverts to the pre-#1379 posture where cic sends
-      # no `client_proto` and the server treats any bundle as current.
-      assert is_integer(cic_protocol_version())
-    end
+    test "cicchetto declares the GENERATED number, not a literal" do
+      source = File.read!(@cic_socket)
 
-    test "cicchetto's declared version is at or above the floor — raising min_version bricks stale bundles" do
-      # Fails on the commit that raises `min_version/0` without shipping a cic
-      # bundle that declares the new number. That is not a false alarm: with
-      # #1379 in, such a deploy 426s the reference client at the handshake,
-      # and a browser cannot read the 426 body, so the user sees an endless
-      # silent reconnect loop rather than an error. The two numbers move
-      # together or the floor does not move.
-      assert cic_protocol_version() >= Protocol.min_version()
-    end
-  end
+      assert source =~ ~r/^import \{ PROTOCOL_VERSION \} from "\.\/wireTypes";$/m,
+             "#{@cic_socket} no longer imports PROTOCOL_VERSION from the generated wireTypes.ts"
 
-  # #1973 — the OTHER direction, and the one every pin in this file was blind
-  # to: cic falling behind `version/0`.
-  #
-  # The three pins that exist all point one way and all stayed green while the
-  # constant rotted. `>= min_version()` above is `9 >= 1`; the server floor
-  # below is `9 <= 13`; cic's own `MIN_SERVER <= CLIENT`
-  # (`serverProtocol.test.ts`) is `9 <= 9`. Nothing compared cic against what
-  # the server actually SPEAKS, which is the number socket.ts says it is
-  # declaring ("The number is the CONTRACT version", socket.ts:71-75).
-  #
-  # Measured drift on `origin/main` at the time of writing: 12 bumps of
-  # `@protocol_version` (1 → 13, 2026-07-27 → 2026-09-06) against 3 writes of
-  # `CLIENT_PROTOCOL_VERSION`, two of which were catch-ups — the 2 → 9 one
-  # skipped seven bumps at once. Since cic first declared a version
-  # (2026-08-16) the two constants have been equal for roughly 8 days out of
-  # 22. The stale value is the normal state, not the accident.
-  #
-  # Why that is not cosmetic: `noteServerProtocol` (socket.ts:441-451) warns on
-  # ANY inequality, in either direction, and its only silence is exact
-  # equality. A constant that lags therefore fires "protocol mismatch" on every
-  # healthy boot of a deploy whose bundle and BEAM came from the SAME commit —
-  # which destroys the one signal that a service-worker-cached PWA is skewed
-  # against the BEAM (socket.ts:428-433). It has already misled a tester once.
-  # With this pin, an inequality at runtime means the two artefacts came from
-  # different commits, which is exactly what the warn is for.
-  #
-  # Why EQUALITY and not `>=`: the two numbers are the same contract by
-  # definition, so there is no direction to tolerate. cic below `version/0` is
-  # a stale constant; cic above it is a bundle claiming a shape no server has
-  # ever emitted. Both are the same defect — the declaration not matching the
-  # wire — and `>=` would wave one of them through. This is deliberately NOT
-  # the axis of `MIN_SERVER_PROTOCOL_VERSION`, which stays a separate number
-  # precisely because a bundle may speak v13 and still cope with a v9 server
-  # (serverProtocol.ts:45-49); pinning what cic SPEAKS says nothing about what
-  # it REQUIRES.
-  describe "what cicchetto declares vs what the server SPEAKS (#1973)" do
-    test "cicchetto's declared version IS the protocol the server speaks" do
-      # Fails on any bump of `@protocol_version` that does not carry the cic
-      # constant with it — i.e. on the commit that introduces the drift, rather
-      # than on the browser console of whoever notices months later.
-      cic = cic_protocol_version()
-      server = Protocol.version()
-
-      assert cic == server,
-             "cicchetto declares CLIENT_PROTOCOL_VERSION = #{cic} " <>
-               "(#{@cic_socket}) while the server speaks #{server}. " <>
-               "These are one contract version, not two: bump the cic " <>
-               "constant in the same change that bumps @protocol_version, " <>
-               "and extend its note the way `2 -> 9` did."
+      assert source =~ ~r/^export const CLIENT_PROTOCOL_VERSION = PROTOCOL_VERSION;$/m,
+             "#{@cic_socket} must declare CLIENT_PROTOCOL_VERSION as the generated " <>
+               "PROTOCOL_VERSION (#2695); a hand literal there is how it drifted before"
     end
   end
 
@@ -163,16 +117,13 @@ defmodule Grappa.ProtocolTest do
   # order puts every atom above every integer: `nil >= Protocol.min_version()`
   # and `nil <= Protocol.version()` are `true` and `false` respectively — the
   # first passes vacuously on exactly the edit it exists to catch, and neither
-  # names what actually went wrong. Both readers below compare, so both need
-  # the flunk; that shared need is why this is one function and not two.
+  # names what actually went wrong, so the reader FLUNKS.
   defp cic_integer_constant(path, name) do
     case Regex.run(~r/^export const #{Regex.escape(name)} = (\d+);$/m, File.read!(path)) do
       [_, digits] -> String.to_integer(digits)
       nil -> flunk("no `export const #{name} = <int>;` in #{path}")
     end
   end
-
-  defp cic_protocol_version, do: cic_integer_constant(@cic_socket, "CLIENT_PROTOCOL_VERSION")
 
   defp cic_min_server_protocol_version,
     do: cic_integer_constant(@cic_server_protocol, "MIN_SERVER_PROTOCOL_VERSION")

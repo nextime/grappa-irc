@@ -39,19 +39,23 @@
 #ifndef SHOTTINO_WIRE_H
 #define SHOTTINO_WIRE_H
 
-/* The wire protocol this client is written against — `Grappa.Protocol`'s
- * `@protocol_version` at the time these parsers were last taught the
- * wire, declared to the server as `client_proto` on the upgrade URL
- * (docs/CLIENT_PROTOCOL.md §3b).
+/* The wire protocol this client speaks, `WIRE_PROTOCOL_VERSION`, declared
+ * to the server as `client_proto` on the upgrade URL (docs/CLIENT_PROTOCOL.md
+ * §3b). GENERATED into wire_gen.h from `Grappa.Protocol.version/0` (#2695):
+ * it used to be a literal here, held to lib/grappa/protocol.ex by a test in
+ * test_commands, and a server bump now reaches it by regeneration rather
+ * than by that test going red.
  *
- * It is a claim, not a capability list: the server refuses a number
- * below its floor with 426 and otherwise opens the socket, and the wire
- * is additive so a server newer than this number still works — what it
- * added since is simply not shown. The number exists so that the build
- * can ask the question a running client cannot: test_commands pins it
- * to lib/grappa/protocol.ex, and reddens when the server bumps, so the
- * bump is READ (what moved, does a terminal care) rather than slept
- * through — nine bumps went by unnoticed before the pin existed.
+ * It is a claim, not a capability list: the server refuses a number below
+ * its floor with 426 and otherwise opens the socket, and the wire is
+ * additive, so what a newer server added is simply not shown.
+ *
+ * 🔴 What the generation GAVE UP, stated so it is not rediscovered: the red
+ * test was also the thing that made each bump READ for a terminal. What
+ * still forces a read is the kind-parity test in test_commands, which holds
+ * this client to every event kind cicchetto narrows — a new FIELD on a
+ * known kind no longer reaches anyone here unless they look. The note below
+ * is that look, by hand.
  *
  * Last read, v64 -> v65 (issue 2201): the REST error token
  * `no_query_window` (422), answered by `POST …/read-cursor` for a DM nick
@@ -63,9 +67,9 @@
  * "read-cursor failed HTTP 422" line, which is what the event is. Nothing
  * to parse, no command to add.
  *
- * Replace this note at the next bump rather than appending to it — the
- * question the pin asks is about the CURRENT gap, not a changelog. */
-#define WIRE_PROTOCOL_VERSION 65
+ * Replace this note when you read a bump rather than appending to it — the
+ * question is about the CURRENT gap, not a changelog. */
+#include "wire_gen.h"
 
 #include <stdbool.h>
 #include <stddef.h>

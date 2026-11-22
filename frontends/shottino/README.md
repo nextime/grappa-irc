@@ -1184,8 +1184,10 @@ server, and did the server answer? That was unanswerable from inside the client.
 ### Which protocol this speaks
 
 The upgrade URL declares `client_proto=<N>`, where `N` is `WIRE_PROTOCOL_VERSION`
-in `wire.h` — `Grappa.Protocol`'s number at the time these parsers were last
-taught the wire. Below the server's floor the handshake answers 426 and the log
+in `wire_gen.h` — generated from `Grappa.Protocol.version/0` by
+`mix grappa.gen_wire_types`, so it is the number of the server this source was
+cut beside (#2695). What shottino last *read* of a bump is a separate note, in
+`wire.h`. Below the server's floor the handshake answers 426 and the log
 says so as "this shottino is too old", which is a different repair from the 403
 a bad bearer earns. Omitting the parameter is legal and means "current", which
 is what shottino used to do — a claim a client last taught the wire at v21

@@ -12,6 +12,7 @@ import {
   recordSocketError,
   recordSocketOpen,
 } from "./socketHealth";
+import { PROTOCOL_VERSION } from "./wireTypes";
 
 // Phoenix Channels singleton. Mirrors `auth.ts`'s module-singleton shape:
 // every component that needs the live event-push surface joins via the
@@ -466,7 +467,13 @@ let _socket: Socket | null = null;
 // `friendlyApiError` for the exhaustive union; a server below 65 accepts the
 // write instead of refusing it, which costs this client nothing.
 // `MIN_SERVER_PROTOCOL_VERSION` stays at 9.
-export const CLIENT_PROTOCOL_VERSION = 65;
+//
+// #2695 — no longer a literal. The number is generated from
+// `Grappa.Protocol.version/0` into `wireTypes.ts` (`mix grappa.gen_wire_types`),
+// so a server bump reaches this bundle by regeneration and `--check` is red
+// until it does; the hand pin in `protocol_test.exs` that held the two equal
+// went with the literal it pinned.
+export const CLIENT_PROTOCOL_VERSION = PROTOCOL_VERSION;
 
 // #193 — force the correct WS scheme from the page origin, absolutely.
 //

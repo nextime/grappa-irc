@@ -1024,6 +1024,14 @@ struct overlay {
      * overlay so closing the box disarms it. */
     bool confirm_open;
     enum admin_verb pending;
+    /* Delete network only (#2325): how many messages go with it, as the
+     * server counted them when the verb was armed, and the id of the
+     * network that was counted. -1 is "not counted", and an uncounted
+     * delete is not offered — the confirm states the number or it does
+     * not confirm. The id is what keeps a panel refresh from pairing the
+     * number with a different network than the one now selected. */
+    long pending_count;
+    char pending_id[128];
     /* OVERLAY_ADMIN in FORM mode: the fields being filled in, which one
      * has the cursor, and what they will create. ADMIN_V_NONE means this
      * is the ordinary verb menu instead.
@@ -6830,6 +6838,32 @@ static bool admin_verb_request(enum admin_verb v, const struct admin_row *row,
     }
     free(id);
     return true;
+}
+
+/* Where the Delete-network confirm reads how many messages go with the
+ * network (#2325): `GET /admin/networks/:id/message_count`, protocol 33.
+ * False for anything but a network row with an id. */
+static bool admin_message_count_path(const struct admin_row *row, char *path, size_t path_sz) {
+    if (!row || row->res != ADMIN_RES_NETWORK || !row->id[0] || path_sz == 0) return false;
+    char *id = url_encode(row->id);
+    if (!id) return false;
+    int k = snprintf(path, path_sz, "/admin/networks/%s/message_count", id);
+    free(id);
+    return k > 0 && (size_t)k < path_sz;
+}
+
+/* The count in that route's answer, `{"message_count": n}`. False for
+ * anything else — an error body, a string, a negative — because the
+ * caller's fallback for "no number" is to refuse, never to assume none. */
+static bool admin_message_count_of(const char *body, long *out) {
+    if (!body) return false;
+    json_doc *doc = json_parse(body, strlen(body), NULL, 0);
+    if (!doc) return false;
+    long c = -1;
+    bool ok = json_long_req(json_root(doc), "message_count", &c) && c >= 0;
+    json_free(doc);
+    if (ok) *out = c;
+    return ok;
 }
 
 /* Record the row panel_line has just drawn as something a verb can act
@@ -21171,8 +21205,20 @@ static size_t overlay_items_locked(struct app *app, struct overlay_item *out, si
              * overlay, for the same reason: Enter pressed by reflex
              * must never be the answer that cannot be taken back. */
             menu_add_verb(out, &n, max, ACT_ADMIN_CANCEL, ADMIN_V_NONE, "Cancel");
-            menu_add_verb(out, &n, max, ACT_ADMIN, ov->pending, "%s %s — no undo",
-                          admin_verb_name(ov->pending), row->label);
+            if (ov->pending == ADMIN_V_DELETE_NETWORK) {
+                /* The scrollback goes with the network (#2325), so the
+                 * answer names how much. Offered only for the network
+                 * that was counted: after a refresh the selection may
+                 * sit on another one, and its delete would then carry
+                 * someone else's number. */
+                if (ov->pending_count < 0 || strcmp(ov->pending_id, row->id) != 0) return n;
+                menu_add_verb(out, &n, max, ACT_ADMIN, ov->pending,
+                              "%s %s and %ld message%s — no undo", admin_verb_name(ov->pending),
+                              row->label, ov->pending_count, ov->pending_count == 1 ? "" : "s");
+            } else {
+                menu_add_verb(out, &n, max, ACT_ADMIN, ov->pending, "%s %s — no undo",
+                              admin_verb_name(ov->pending), row->label);
+            }
             return n;
         }
         enum admin_verb verbs[8];
@@ -21414,6 +21460,8 @@ static void overlay_close(struct app *app) {
      * it, memory and all: a half-typed password has no business
      * surviving the box that asked for it. */
     app->overlay.pending = ADMIN_V_NONE;
+    app->overlay.pending_count = -1;
+    app->overlay.pending_id[0] = 0;
     app->overlay.call_controls = false;
     app->overlay.msg_id = 0;
     app->overlay.confirm_delete = false;
@@ -21607,8 +21655,32 @@ static void overlay_activate(struct app *app) {
      * leave the overlay closed. */
     if (action == ACT_ADMIN && verb != ADMIN_V_NONE && pending == ADMIN_V_NONE &&
         admin_verb_destructive(verb)) {
+        /* Deleting a network deletes its scrollback too, for every
+         * subject (#2325), so the second question says how many
+         * messages — counted by the server, now. No count, no confirm:
+         * a server before protocol 33 answers 404 here, and deleting
+         * blind is the thing this exists to stop. */
+        long count = -1;
+        if (verb == ADMIN_V_DELETE_NETWORK) {
+            char cpath[256];
+            if (!admin_message_count_path(&row, cpath, sizeof(cpath))) {
+                log_line(app, "admin: %s does not apply to %s", admin_verb_name(verb), row.label);
+                return;
+            }
+            struct http_response r = http_request(app, "GET", cpath, NULL);
+            bool counted = r.status >= 200 && r.status < 300 && admin_message_count_of(r.body, &count);
+            if (!counted)
+                log_line(app,
+                         "admin: not deleting %s — could not read how many messages go with it "
+                         "(HTTP %d: %.200s)",
+                         row.label, r.status, r.body ? r.body : "");
+            free(r.body);
+            if (!counted) return;
+        }
         pthread_mutex_lock(&app->lock);
         app->overlay.kind = OVERLAY_ADMIN;
+        app->overlay.pending_count = count;
+        snprintf(app->overlay.pending_id, sizeof(app->overlay.pending_id), "%s", row.id);
         app->overlay.pending = verb;
         app->overlay.sel = 0;
         app->overlay.top = 0;

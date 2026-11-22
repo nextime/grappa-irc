@@ -1704,6 +1704,89 @@ TEST(the_confirmation_opens_on_the_answer_that_does_nothing) {
     free_app(app);
 }
 
+/* ── Delete network says how much goes (#2325) ─────────────────────────
+ *
+ * Since PR 2324 the server deletes a network TOGETHER with its
+ * scrollback, across every subject. The confirm used to read "no undo"
+ * and nothing more; the maintainer's ruling for 2320 is that the confirm
+ * states the number and the number comes from the server. */
+TEST(the_message_count_is_read_from_the_servers_answer) {
+    long c = -7;
+    CHECK(admin_message_count_of("{\"message_count\":42}", &c));
+    CHECK_LONG(c, 42);
+    CHECK(admin_message_count_of("{\"message_count\":0}", &c));
+    CHECK_LONG(c, 0);
+    /* Anything that is not a count is not a count: a confirm built on a
+     * guessed zero is the blind delete the issue exists to stop. */
+    CHECK(!admin_message_count_of("{\"error\":\"not_found\"}", &c));
+    CHECK(!admin_message_count_of("{\"message_count\":-1}", &c));
+    CHECK(!admin_message_count_of("{\"message_count\":\"42\"}", &c));
+    CHECK(!admin_message_count_of("not json", &c));
+    CHECK(!admin_message_count_of(NULL, &c));
+}
+
+TEST(the_count_is_asked_of_the_network_the_row_names) {
+    struct admin_row network = {ADMIN_RES_NETWORK, 0, "1", "azzurra", false};
+    struct admin_row user = {ADMIN_RES_USER, 0, "u-1", "nextime", false};
+    struct admin_row nameless = {ADMIN_RES_NETWORK, 0, "", "nothing", false};
+    char path[256];
+    CHECK(admin_message_count_path(&network, path, sizeof(path)));
+    CHECK_STR(path, "/admin/networks/1/message_count");
+    CHECK(!admin_message_count_path(&user, path, sizeof(path)));
+    CHECK(!admin_message_count_path(&nameless, path, sizeof(path)));
+}
+
+TEST(the_delete_network_confirm_states_how_many_messages_go) {
+    struct app *app = window_app();
+    CHECK(app != NULL);
+    app->panel = PANEL_ADMIN;
+    render_json(app, ADMIN_NETWORKS_JSON, render_admin_networks);
+    struct overlay_item items[16];
+
+    app->overlay.kind = OVERLAY_ADMIN;
+    app->overlay.pending = ADMIN_V_DELETE_NETWORK;
+    app->overlay.pending_count = 42;
+    snprintf(app->overlay.pending_id, sizeof(app->overlay.pending_id), "1");
+    size_t n = overlay_items_locked(app, items, 16);
+    CHECK_LONG(n, 2);
+    CHECK_LONG(items[0].action, ACT_ADMIN_CANCEL);
+    CHECK_LONG(items[1].verb, ADMIN_V_DELETE_NETWORK);
+    CHECK(strstr(items[1].label, "azzurra and 42 messages") != NULL);
+
+    app->overlay.pending_count = 1;
+    n = overlay_items_locked(app, items, 16);
+    CHECK(strstr(items[1].label, "and 1 message ") != NULL);
+
+    /* The panel refreshed under the armed box and the selection now
+     * names a different network than the one that was counted: the
+     * number on screen would describe the wrong network, so the delete
+     * is withdrawn and only Cancel remains. */
+    snprintf(app->overlay.pending_id, sizeof(app->overlay.pending_id), "2");
+    n = overlay_items_locked(app, items, 16);
+    CHECK_LONG(n, 1);
+    CHECK_LONG(items[0].action, ACT_ADMIN_CANCEL);
+
+    /* Never counted at all: no delete on offer either. */
+    snprintf(app->overlay.pending_id, sizeof(app->overlay.pending_id), "1");
+    app->overlay.pending_count = -1;
+    n = overlay_items_locked(app, items, 16);
+    CHECK_LONG(n, 1);
+    free_app(app);
+}
+
+TEST(closing_an_admin_menu_forgets_the_count_it_was_showing) {
+    struct app *app = window_app();
+    CHECK(app != NULL);
+    app->overlay.kind = OVERLAY_ADMIN;
+    app->overlay.pending = ADMIN_V_DELETE_NETWORK;
+    app->overlay.pending_count = 42;
+    snprintf(app->overlay.pending_id, sizeof(app->overlay.pending_id), "1");
+    overlay_close(app);
+    CHECK_LONG(app->overlay.pending_count, -1);
+    CHECK_STR(app->overlay.pending_id, "");
+    free_app(app);
+}
+
 TEST(closing_an_admin_menu_disarms_the_verb_it_was_holding) {
     struct app *app = window_app();
     CHECK(app != NULL);
@@ -5914,6 +5997,10 @@ int main(void) {
     RUN(only_the_irreversible_verbs_ask_twice);
     RUN(the_confirmation_opens_on_the_answer_that_does_nothing);
     RUN(closing_an_admin_menu_disarms_the_verb_it_was_holding);
+    RUN(the_message_count_is_read_from_the_servers_answer);
+    RUN(the_count_is_asked_of_the_network_the_row_names);
+    RUN(the_delete_network_confirm_states_how_many_messages_go);
+    RUN(closing_an_admin_menu_forgets_the_count_it_was_showing);
     RUN(the_presence_tab_names_the_socket_that_never_reported);
     RUN(the_admin_uploads_tab_totals_the_bytes_field);
     RUN(the_admin_visitors_tab_renders_per_network_rows);
